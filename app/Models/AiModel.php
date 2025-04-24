@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ActivityLog extends Model
+class AiModel extends Model
 {
     use HasFactory;
 
@@ -15,15 +15,11 @@ class ActivityLog extends Model
      * @var array
      */
     protected $fillable = [
-        'user_id',
-        'action',
-        'module',
+        'name',
+        'api_identifier',
         'description',
-        'entity_type',
-        'entity_id',
-        'ip_address',
-        'old_values',
-        'new_values',
+        'is_active',
+        'config',
     ];
 
     /**
@@ -32,15 +28,16 @@ class ActivityLog extends Model
      * @var array
      */
     protected $casts = [
-        'old_values' => 'json',
-        'new_values' => 'json',
+        'is_active' => 'boolean',
+        'config' => 'json',
     ];
 
     /**
-     * Activity log belongs to user relationship
+     * AI Model belongs to many users relationship
      */
-    public function user()
+    public function users()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsToMany(User::class, 'user_ai_model')
+            ->withTimestamps();
     }
 }

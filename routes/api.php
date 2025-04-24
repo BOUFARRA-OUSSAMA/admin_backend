@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\PatientController;
 
 // Authentication Routes
 Route::group(['prefix' => 'auth'], function () {
@@ -21,9 +22,14 @@ Route::group(['prefix' => 'auth'], function () {
     });
 });
 
+Route::post('patients', [PatientController::class, 'store']);
 // Protected Routes
 Route::group(['middleware' => ['jwt.auth']], function () {
     // User Routes
+
+    Route::get('patients', [PatientController::class, 'index']);
+    Route::get('patients/{id}', [PatientController::class, 'show']);
+
     Route::apiResource('users', UserController::class);
     Route::post('users/{user}/roles', [UserController::class, 'assignRoles']);
     Route::get('users/{user}/roles', [UserController::class, 'getUserRoles']);
@@ -43,6 +49,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('logs/user/{user}', [ActivityLogController::class, 'getUserLogs']);
         Route::get('logs/action/{action}', [ActivityLogController::class, 'getActionLogs']);
         Route::get('logs/module/{module}', [ActivityLogController::class, 'getModuleLogs']);
+
+    
     });
 
     // Analytics Routes (with permission middleware)
