@@ -200,14 +200,16 @@ class AuthController extends Controller
      */
     protected function respondWithToken($token)
     {
-        $user = JWTAuth::parseToken()->authenticate();
+        // During login, we already have the user from JWTAuth::attempt()
+        // so we can use JWTAuth::user() instead of trying to parse token from request
+        $user = JWTAuth::user();
         $user->load('roles.permissions');
-        
+
         return response()->json([
             'success' => true,
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => config('jwt.ttl') * 60, // Use config instead of auth()->factory()
+            'expires_in' => config('jwt.ttl') * 60,
             'user' => $user
         ]);
     }
