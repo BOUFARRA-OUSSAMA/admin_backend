@@ -22,7 +22,7 @@ class CreateRolesTable extends Migration
             $table->softDeletes(); // Add soft delete for roles
         });
     }
-
+    // comment hh
     /**
      * Reverse the migrations.
      *

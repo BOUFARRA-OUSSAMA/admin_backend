@@ -729,6 +729,198 @@ Authorization: Bearer {access_token}
 }
 ```
 
+### Get User Logs
+**Endpoint:** `GET /api/activity-logs/users/{user}`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Query Parameters:**
+- `per_page`: Number of records per page (default: 20)
+- `page`: Page number
+- `sort_by`: Field to sort by (default: created_at)
+- `sort_direction`: asc or desc (default: desc)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "User activity logs retrieved successfully",
+  "data": {
+    "items": [
+      {
+        "id": 23,
+        "user_id": 1,
+        "action": "login",
+        "module": "Authentication",
+        "description": "User logged in",
+        "entity_type": null,
+        "entity_id": null,
+        "ip_address": "127.0.0.1",
+        "created_at": "2025-04-25T10:30:00.000000Z",
+        "updated_at": "2025-04-25T10:30:00.000000Z"
+      }
+      // more logs for this user
+    ],
+    "pagination": {
+      "total": 15,
+      "current_page": 1,
+      "per_page": 20,
+      "last_page": 1
+    }
+  }
+}
+```
+
+### Get Logs by Action Type
+**Endpoint:** `GET /api/activity-logs/actions/{action}`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Query Parameters:**
+- `per_page`: Number of records per page (default: 20)
+- `page`: Page number
+- `sort_by`: Field to sort by (default: created_at)
+- `sort_direction`: asc or desc (default: desc)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Action logs retrieved successfully",
+  "data": {
+    "items": [
+      {
+        "id": 15,
+        "user_id": 1,
+        "action": "login",
+        "module": "Authentication",
+        "description": "User logged in",
+        "entity_type": null,
+        "entity_id": null,
+        "ip_address": "127.0.0.1",
+        "created_at": "2025-04-25T09:15:00.000000Z",
+        "updated_at": "2025-04-25T09:15:00.000000Z",
+        "user": {
+          "id": 1,
+          "name": "Admin User",
+          "email": "admin@example.com"
+        }
+      }
+      // more logs with this action
+    ],
+    "pagination": {
+      "total": 30,
+      "current_page": 1,
+      "per_page": 20,
+      "last_page": 2
+    }
+  }
+}
+```
+
+### Get Logs by Module
+**Endpoint:** `GET /api/activity-logs/modules/{module}`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Query Parameters:**
+- `per_page`: Number of records per page (default: 20)
+- `page`: Page number
+- `sort_by`: Field to sort by (default: created_at)
+- `sort_direction`: asc or desc (default: desc)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Module logs retrieved successfully",
+  "data": {
+    "items": [
+      {
+        "id": 8,
+        "user_id": 1,
+        "action": "create",
+        "module": "Users",
+        "description": "Created user: John Doe",
+        "entity_type": "User",
+        "entity_id": 5,
+        "ip_address": "127.0.0.1",
+        "created_at": "2025-04-25T11:20:00.000000Z",
+        "updated_at": "2025-04-25T11:20:00.000000Z",
+        "user": {
+          "id": 1,
+          "name": "Admin User",
+          "email": "admin@example.com"
+        }
+      }
+      // more logs for this module
+    ],
+    "pagination": {
+      "total": 12,
+      "current_page": 1,
+      "per_page": 20,
+      "last_page": 1
+    }
+  }
+}
+```
+
+### Get All Action Types
+**Endpoint:** `GET /api/activity-logs/actions`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Log actions retrieved successfully",
+  "data": [
+    "login",
+    "logout",
+    "create",
+    "update",
+    "delete",
+    "assign"
+  ]
+}
+```
+
+### Get All Module Types
+**Endpoint:** `GET /api/activity-logs/modules`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Log modules retrieved successfully",
+  "data": [
+    "Authentication",
+    "Users",
+    "Roles",
+    "Permissions",
+    "Patients"
+  ]
+}
+```
+
 ## Analytics
 
 ### User Statistics
