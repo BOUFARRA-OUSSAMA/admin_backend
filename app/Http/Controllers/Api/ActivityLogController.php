@@ -3,12 +3,30 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\ActivityLogService;
+use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
 {
+    use ApiResponseTrait;
+
+    /**
+     * @var ActivityLogService
+     */
+    protected $activityLogService;
+
+    /**
+     * ActivityLogController constructor.
+     *
+     * @param ActivityLogService $activityLogService
+     */
+    public function __construct(ActivityLogService $activityLogService)
+    {
+        $this->activityLogService = $activityLogService;
+    }
+
     /**
      * Display a listing of activity logs.
      *
@@ -17,62 +35,24 @@ class ActivityLogController extends Controller
      */
     public function index(Request $request)
     {
+        $filters = [
+            'user_id' => $request->query('user_id'),
+            'action' => $request->query('action'),
+            'module' => $request->query('module'),
+            'entity_type' => $request->query('entity_type'),
+            'entity_id' => $request->query('entity_id'),
+            'from_date' => $request->query('from_date'),
+            'to_date' => $request->query('to_date'),
+            'search' => $request->query('search'),
+        ];
+
         $perPage = $request->query('per_page', 20);
         $sortBy = $request->query('sort_by', 'created_at');
         $sortDirection = $request->query('sort_direction', 'desc');
 
-        $query = ActivityLog::with('user');
+        $logs = $this->activityLogService->getFilteredLogs($filters, $sortBy, $sortDirection, $perPage);
 
-        // Apply filters
-        if ($userId = $request->query('user_id')) {
-            $query->where('user_id', $userId);
-        }
-
-        if ($action = $request->query('action')) {
-            $query->where('action', $action);
-        }
-
-        if ($module = $request->query('module')) {
-            $query->where('module', $module);
-        }
-
-        if ($entityType = $request->query('entity_type')) {
-            $query->where('entity_type', $entityType);
-        }
-
-        if ($entityId = $request->query('entity_id')) {
-            $query->where('entity_id', $entityId);
-        }
-
-        if ($fromDate = $request->query('from_date')) {
-            $query->whereDate('created_at', '>=', $fromDate);
-        }
-
-        if ($toDate = $request->query('to_date')) {
-            $query->whereDate('created_at', '<=', $toDate);
-        }
-
-        // Search in description
-        if ($search = $request->query('search')) {
-            $query->where('description', 'like', "%{$search}%");
-        }
-
-        // Get paginated results
-        $logs = $query->orderBy($sortBy, $sortDirection)->paginate($perPage);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Activity logs retrieved successfully',
-            'data' => [
-                'items' => $logs->items(),
-                'pagination' => [
-                    'total' => $logs->total(),
-                    'current_page' => $logs->currentPage(),
-                    'per_page' => $logs->perPage(),
-                    'last_page' => $logs->lastPage()
-                ]
-            ]
-        ]);
+        return $this->paginated($logs, 'Activity logs retrieved successfully');
     }
 
     /**
@@ -88,23 +68,9 @@ class ActivityLogController extends Controller
         $sortBy = $request->query('sort_by', 'created_at');
         $sortDirection = $request->query('sort_direction', 'desc');
 
-        $logs = $user->activityLogs()
-            ->orderBy($sortBy, $sortDirection)
-            ->paginate($perPage);
+        $logs = $this->activityLogService->getUserLogs($user->id, $sortBy, $sortDirection, $perPage);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User activity logs retrieved successfully',
-            'data' => [
-                'items' => $logs->items(),
-                'pagination' => [
-                    'total' => $logs->total(),
-                    'current_page' => $logs->currentPage(),
-                    'per_page' => $logs->perPage(),
-                    'last_page' => $logs->lastPage()
-                ]
-            ]
-        ]);
+        return $this->paginated($logs, 'User activity logs retrieved successfully');
     }
 
     /**
@@ -120,24 +86,9 @@ class ActivityLogController extends Controller
         $sortBy = $request->query('sort_by', 'created_at');
         $sortDirection = $request->query('sort_direction', 'desc');
 
-        $logs = ActivityLog::with('user')
-            ->where('action', $action)
-            ->orderBy($sortBy, $sortDirection)
-            ->paginate($perPage);
+        $logs = $this->activityLogService->getActionLogs($action, $sortBy, $sortDirection, $perPage);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Action logs retrieved successfully',
-            'data' => [
-                'items' => $logs->items(),
-                'pagination' => [
-                    'total' => $logs->total(),
-                    'current_page' => $logs->currentPage(),
-                    'per_page' => $logs->perPage(),
-                    'last_page' => $logs->lastPage()
-                ]
-            ]
-        ]);
+        return $this->paginated($logs, 'Action logs retrieved successfully');
     }
 
     /**
@@ -153,23 +104,32 @@ class ActivityLogController extends Controller
         $sortBy = $request->query('sort_by', 'created_at');
         $sortDirection = $request->query('sort_direction', 'desc');
 
-        $logs = ActivityLog::with('user')
-            ->where('module', $module)
-            ->orderBy($sortBy, $sortDirection)
-            ->paginate($perPage);
+        $logs = $this->activityLogService->getModuleLogs($module, $sortBy, $sortDirection, $perPage);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Module logs retrieved successfully',
-            'data' => [
-                'items' => $logs->items(),
-                'pagination' => [
-                    'total' => $logs->total(),
-                    'current_page' => $logs->currentPage(),
-                    'per_page' => $logs->perPage(),
-                    'last_page' => $logs->lastPage()
-                ]
-            ]
-        ]);
+        return $this->paginated($logs, 'Module logs retrieved successfully');
+    }
+
+    /**
+     * Get all available log actions.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getActions()
+    {
+        $actions = $this->activityLogService->getAllActions();
+
+        return $this->success($actions, 'Log actions retrieved successfully');
+    }
+
+    /**
+     * Get all available log modules.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getModules()
+    {
+        $modules = $this->activityLogService->getAllModules();
+
+        return $this->success($modules, 'Log modules retrieved successfully');
     }
 }

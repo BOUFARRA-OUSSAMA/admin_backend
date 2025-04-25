@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class LoginRequest extends FormRequest
 {
@@ -25,22 +27,24 @@ class LoginRequest extends FormRequest
     {
         return [
             'email' => 'required|email',
-            'password' => 'required|string|min:6',
+            'password' => 'required|string',
         ];
     }
 
     /**
-     * Get custom messages for validator errors.
+     * Handle a failed validation attempt.
      *
-     * @return array
+     * @param  \Illuminate\Contracts\Validation\Validator  $validator
+     * @return void
+     *
+     * @throws \Illuminate\Http\Exceptions\HttpResponseException
      */
-    public function messages()
+    protected function failedValidation(Validator $validator)
     {
-        return [
-            'email.required' => 'Email is required',
-            'email.email' => 'Email must be a valid email address',
-            'password.required' => 'Password is required',
-            'password.min' => 'Password must be at least 6 characters',
-        ];
+        throw new HttpResponseException(response()->json([
+            'success' => false,
+            'message' => 'Validation failed',
+            'errors' => $validator->errors()
+        ], 422));
     }
 }

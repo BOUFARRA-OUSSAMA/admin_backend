@@ -3,14 +3,42 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Role;
+use App\Http\Requests\User\StoreUserRequest;
+use App\Http\Requests\User\UpdateUserRequest;
+use App\Http\Requests\User\AssignRolesRequest;
 use App\Models\User;
+use App\Services\UserService;
+use App\Services\AuthService;
+use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserController extends Controller
 {
+    use ApiResponseTrait;
+
+    /**
+     * @var UserService
+     */
+    protected $userService;
+
+    /**
+     * @var AuthService
+     */
+    protected $authService;
+
+    /**
+     * UserController constructor.
+     *
+     * @param UserService $userService
+     * @param AuthService $authService
+     */
+    public function __construct(UserService $userService, AuthService $authService)
+    {
+        $this->userService = $userService;
+        $this->authService = $authService;
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -19,104 +47,46 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        // Handle pagination
-        $perPage = $request->query('per_page', 15);
+        $filters = [
+            'search' => $request->query('search'),
+            'status' => $request->query('status'),
+            'role_id' => $request->query('role_id'),
+        ];
 
-        // Handle sorting
+        $perPage = $request->query('per_page', 15);
         $sortBy = $request->query('sort_by', 'created_at');
         $sortDirection = $request->query('sort_direction', 'desc');
 
-        // Handle filtering
-        $search = $request->query('search');
-        $status = $request->query('status');
-        $roleId = $request->query('role_id');
+        $users = $this->userService->getFilteredUsers($filters, $sortBy, $sortDirection, $perPage);
 
-        $query = User::query()->with('roles');
-
-        // Apply filters
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        if ($status) {
-            $query->where('status', $status);
-        }
-
-        if ($roleId) {
-            $query->whereHas('roles', function ($q) use ($roleId) {
-                $q->where('roles.id', $roleId);
-            });
-        }
-
-        // Apply sorting
-        $query->orderBy($sortBy, $sortDirection);
-
-        // Get paginated results
-        $users = $query->paginate($perPage);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Users retrieved successfully',
-            'data' => [
-                'items' => $users->items(),
-                'pagination' => [
-                    'total' => $users->total(),
-                    'current_page' => $users->currentPage(),
-                    'per_page' => $users->perPage(),
-                    'last_page' => $users->lastPage()
-                ]
-            ]
-        ]);
+        return $this->paginated($users, 'Users retrieved successfully');
     }
 
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\User\StoreUserRequest  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'phone' => 'nullable|string|max:20',
-            'status' => 'required|in:active,inactive,pending',
-            'roles' => 'nullable|array',
-            'roles.*' => 'exists:roles,id',
-        ]);
+        $user = $this->userService->createUser($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+        // Log the activity
+        try {
+            $authUser = JWTAuth::parseToken()->authenticate();
+            $this->userService->logUserActivity(
+                $authUser->id,
+                'create',
+                'Created user: ' . $user->name,
+                $user,
+                $request
+            );
+        } catch (\Exception $e) {
+            // Just continue if logging fails
         }
 
-        // Create user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'phone' => $request->phone,
-            'status' => $request->status,
-        ]);
-
-        // Assign roles if provided
-        if ($request->has('roles')) {
-            $user->roles()->attach($request->roles);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User created successfully',
-            'data' => $user->load('roles')
-        ], 201);
+        return $this->success($user->load('roles'), 'User created successfully', 201);
     }
 
     /**
@@ -127,127 +97,111 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        return response()->json([
-            'success' => true,
-            'data' => $user->load(['roles.permissions', 'aiModels'])
-        ]);
+        $user = $this->userService->getUserById($user->id);
+
+        return $this->success($user);
     }
 
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\User\UpdateUserRequest  $request
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
-            'password' => 'sometimes|required|string|min:6|confirmed',
-            'phone' => 'nullable|string|max:20',
-            'status' => 'sometimes|required|in:active,inactive,pending',
-        ]);
+        $oldUser = $user->toArray();
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+        $updatedUser = $this->userService->updateUser($user->id, $request->validated());
+
+        // Log the activity
+        try {
+            $authUser = JWTAuth::parseToken()->authenticate();
+            $this->userService->logUserActivity(
+                $authUser->id,
+                'update',
+                'Updated user: ' . $updatedUser->name,
+                $updatedUser,
+                $request,
+                $oldUser,
+                $updatedUser->toArray()
+            );
+        } catch (\Exception $e) {
+            // Just continue if logging fails
         }
 
-        // Store old values for activity log
-        $oldValues = $user->toArray();
-
-        // Update user details
-        if ($request->has('name')) {
-            $user->name = $request->name;
-        }
-
-        if ($request->has('email')) {
-            $user->email = $request->email;
-        }
-
-        if ($request->has('password')) {
-            $user->password = Hash::make($request->password);
-        }
-
-        if ($request->has('phone')) {
-            $user->phone = $request->phone;
-        }
-
-        if ($request->has('status')) {
-            $user->status = $request->status;
-        }
-
-        $user->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User updated successfully',
-            'data' => $user->load('roles')
-        ]);
+        return $this->success($updatedUser, 'User updated successfully');
     }
 
     /**
      * Remove the specified resource from storage.
      *
      * @param  \App\Models\User  $user
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function destroy(User $user)
+    public function destroy(User $user, Request $request)
     {
-        // Don't allow deleting yourself
-        if (auth('api')->id() === $user->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You cannot delete your own account'
-            ], 403);
+        try {
+            $authUser = JWTAuth::parseToken()->authenticate();
+
+            // Delete user
+            $result = $this->userService->deleteUser($user->id, $authUser->id);
+
+            if (!$result) {
+                return $this->error('You cannot delete your own account', 403);
+            }
+
+            // Log the activity
+            $this->userService->logUserActivity(
+                $authUser->id,
+                'delete',
+                'Deleted user: ' . $user->name,
+                $user,
+                $request
+            );
+
+            return $this->success(null, 'User deleted successfully');
+        } catch (\Exception $e) {
+            return $this->error('Failed to delete user: ' . $e->getMessage(), 500);
         }
-
-        $user->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User deleted successfully'
-        ]);
     }
 
     /**
      * Assign roles to a user
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\User\AssignRolesRequest  $request
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\JsonResponse
      */
-    public function assignRoles(Request $request, User $user)
+    public function assignRoles(AssignRolesRequest $request, User $user)
     {
-        $validator = Validator::make($request->all(), [
-            'roles' => 'required|array',
-            'roles.*' => 'exists:roles,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Get old roles for activity log
         $oldRoles = $user->roles()->pluck('id')->toArray();
 
-        // Sync roles
-        $user->roles()->sync($request->roles);
+        // Access the validated data directly
+        $validatedData = $request->validated();
+        $roles = $validatedData['roles'];
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Roles assigned successfully',
-            'data' => $user->load('roles')
-        ]);
+        $updatedUser = $this->userService->assignRoles($user->id, $roles);
+
+        // Log the activity
+        try {
+            $authUser = JWTAuth::parseToken()->authenticate();
+            $this->userService->logUserActivity(
+                $authUser->id,
+                'assign',
+                'Assigned roles to user: ' . $user->name,
+                $user,
+                $request,
+                ['roles' => $oldRoles],
+                ['roles' => $roles]
+            );
+        } catch (\Exception $e) {
+            // Just continue if logging fails
+        }
+
+        return $this->success($updatedUser, 'Roles assigned successfully');
     }
 
     /**
@@ -258,10 +212,9 @@ class UserController extends Controller
      */
     public function getUserRoles(User $user)
     {
-        return response()->json([
-            'success' => true,
-            'data' => $user->roles
-        ]);
+        $roles = $this->userService->getUserRoles($user->id);
+
+        return $this->success($roles);
     }
 
     /**
@@ -272,11 +225,8 @@ class UserController extends Controller
      */
     public function getUserPermissions(User $user)
     {
-        $permissions = $user->getAllPermissions();
+        $permissions = $this->userService->getUserPermissions($user->id);
 
-        return response()->json([
-            'success' => true,
-            'data' => $permissions
-        ]);
+        return $this->success($permissions);
     }
 }

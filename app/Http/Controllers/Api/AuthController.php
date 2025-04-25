@@ -5,15 +5,33 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use App\Models\ActivityLog;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class AuthController extends Controller
 {
+    /**
+     * @var AuthService
+     */
+    protected $authService;
+
+    /**
+     * AuthController constructor.
+     * 
+     * @param AuthService $authService
+     */
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
+    }
+
     /**
      * Get a JWT via given credentials.
      *
@@ -37,35 +55,43 @@ class AuthController extends Controller
 
         $credentials = $request->only(['email', 'password']);
 
-        if (!$token = JWTAuth::attempt($credentials)) {
+        try {
+            if (!$token = JWTAuth::attempt($credentials)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials'
+                ], 401);
+            }
+
+            // Check if user is active
+            $user = JWTAuth::user();
+            if ($user->status !== 'active') {
+                JWTAuth::invalidate(JWTAuth::getToken());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account is inactive. Please contact the administrator.'
+                ], 403);
+            }
+
+            // Log the login activity
+            $this->authService->logActivity(
+                $user->id,
+                'login',
+                'Authentication',
+                'User logged in',
+                null,
+                null,
+                $request->ip()
+            );
+
+            return $this->respondWithToken($token);
+        } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid credentials'
-            ], 401);
+                'message' => 'Could not create token',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // Check if user is active
-        $user = JWTAuth::user();
-        if ($user->status !== 'active') {
-            JWTAuth::invalidate(JWTAuth::getToken());
-            return response()->json([
-                'success' => false,
-                'message' => 'Your account is inactive. Please contact the administrator.'
-            ], 403);
-        }
-
-        // Log the login activity
-        $this->logActivity(
-            $user->id,
-            'login',
-            'Authentication',
-            'User logged in',
-            null,
-            null,
-            $request->ip()
-        );
-
-        return $this->respondWithToken($token);
     }
 
     /**
@@ -124,7 +150,7 @@ class AuthController extends Controller
             $user = JWTAuth::parseToken()->authenticate();
 
             // Log the logout activity
-            $this->logActivity(
+            $this->authService->logActivity(
                 $user->id,
                 'logout',
                 'Authentication',
@@ -164,10 +190,22 @@ class AuthController extends Controller
                 'success' => true,
                 'data' => $user
             ]);
+        } catch (TokenExpiredException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token expired',
+                'error' => $e->getMessage()
+            ], 401);
+        } catch (TokenInvalidException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token invalid',
+                'error' => $e->getMessage()
+            ], 401);
         } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Could not get user profile',
+                'message' => 'Token absent',
                 'error' => $e->getMessage()
             ], 401);
         }
@@ -183,6 +221,12 @@ class AuthController extends Controller
         try {
             $token = JWTAuth::parseToken()->refresh();
             return $this->respondWithToken($token);
+        } catch (TokenExpiredException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token has expired and can no longer be refreshed',
+                'error' => $e->getMessage()
+            ], 401);
         } catch (JWTException $e) {
             return response()->json([
                 'success' => false,
@@ -200,8 +244,7 @@ class AuthController extends Controller
      */
     protected function respondWithToken($token)
     {
-        // During login, we already have the user from JWTAuth::attempt()
-        // so we can use JWTAuth::user() instead of trying to parse token from request
+        // Get the user directly from JWTAuth
         $user = JWTAuth::user();
         $user->load('roles.permissions');
 
@@ -211,31 +254,6 @@ class AuthController extends Controller
             'token_type' => 'bearer',
             'expires_in' => config('jwt.ttl') * 60,
             'user' => $user
-        ]);
-    }
-
-    /**
-     * Log activity helper method
-     *
-     * @param int $userId
-     * @param string $action
-     * @param string $module
-     * @param string $description
-     * @param string|null $entityType
-     * @param int|null $entityId
-     * @param string|null $ipAddress
-     * @return void
-     */
-    private function logActivity($userId, $action, $module, $description, $entityType = null, $entityId = null, $ipAddress = null)
-    {
-        ActivityLog::create([
-            'user_id' => $userId,
-            'action' => $action,
-            'module' => $module,
-            'description' => $description,
-            'entity_type' => $entityType,
-            'entity_id' => $entityId,
-            'ip_address' => $ipAddress
         ]);
     }
 }

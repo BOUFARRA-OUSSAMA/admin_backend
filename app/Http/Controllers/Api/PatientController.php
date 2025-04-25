@@ -3,133 +3,168 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Role;
+use App\Http\Requests\Patient\StorePatientRequest;
+use App\Http\Requests\Patient\UpdatePatientRequest;
 use App\Models\User;
+use App\Services\PatientService;
+use App\Services\AuthService;
+use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PatientController extends Controller
 {
+    use ApiResponseTrait;
+
     /**
-     * Display a listing of patients.
+     * @var PatientService
+     */
+    protected $patientService;
+
+    /**
+     * @var AuthService
+     */
+    protected $authService;
+
+    /**
+     * PatientController constructor.
      *
+     * @param PatientService $patientService
+     * @param AuthService $authService
+     */
+    public function __construct(PatientService $patientService, AuthService $authService)
+    {
+        $this->patientService = $patientService;
+        $this->authService = $authService;
+    }
+
+    /**
+     * Display a listing of the patients.
+     *
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Get the patient role
-        $patientRole = Role::where('code', 'patient')->first();
+        $filters = [
+            'search' => $request->query('search'),
+            'status' => $request->query('status'),
+        ];
 
-        if (!$patientRole) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Patient role not found'
-            ], 404);
-        }
+        $perPage = $request->query('per_page', 15);
+        $sortBy = $request->query('sort_by', 'created_at');
+        $sortDirection = $request->query('sort_direction', 'desc');
 
-        // Get all users with patient role
-        $patients = $patientRole->users()->paginate(15);
+        $patients = $this->patientService->getFilteredPatients($filters, $sortBy, $sortDirection, $perPage);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Patients retrieved successfully',
-            'data' => [
-                'items' => $patients->items(),
-                'pagination' => [
-                    'total' => $patients->total(),
-                    'current_page' => $patients->currentPage(),
-                    'per_page' => $patients->perPage(),
-                    'last_page' => $patients->lastPage()
-                ]
-            ]
-        ]);
+        return $this->paginated($patients, 'Patients retrieved successfully');
     }
 
     /**
      * Store a newly created patient in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\Patient\StorePatientRequest  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function store(StorePatientRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'phone' => 'nullable|string|max:20',
-        ]);
+        try {
+            $patient = $this->patientService->createPatient($request->validated());
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+            // Log the activity
+            $authUser = JWTAuth::parseToken()->authenticate();
+            $this->patientService->logPatientActivity(
+                $authUser->id,
+                'create',
+                'Created patient: ' . $patient->name,
+                $patient,
+                $request
+            );
+
+            return $this->success($patient, 'Patient created successfully', 201);
+        } catch (\Exception $e) {
+            return $this->error('Failed to create patient: ' . $e->getMessage(), 500);
         }
-
-        // Create the user
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'phone' => $request->phone,
-            'status' => 'active', // Patients are active by default
-        ]);
-
-        // Get the patient role
-        $patientRole = Role::where('code', 'patient')->first();
-
-        if (!$patientRole) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Patient role not defined in the system'
-            ], 500);
-        }
-
-        // Assign patient role
-        $user->roles()->attach($patientRole->id);
-
-        // Track activity
-        activity_log(
-            $request->user() ? $request->user()->id : null,
-            'create',
-            'Patient',
-            'Created new patient account',
-            User::class,
-            $user->id,
-            $request->ip()
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Patient created successfully',
-            'data' => $user->load('roles')
-        ], 201);
     }
 
     /**
      * Display the specified patient.
      *
-     * @param  int  $id
+     * @param  \App\Models\User  $patient
      * @return \Illuminate\Http\JsonResponse
      */
-    public function show($id)
+    public function show(User $patient)
     {
-        $user = User::findOrFail($id);
+        try {
+            $patient = $this->patientService->getPatientById($patient->id);
 
-        // Check if user is a patient
-        if (!$user->isPatient()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'The specified user is not a patient'
-            ], 400);
+            return $this->success($patient);
+        } catch (\Exception $e) {
+            return $this->error('Failed to retrieve patient: ' . $e->getMessage(), 404);
         }
+    }
 
-        return response()->json([
-            'success' => true,
-            'data' => $user->load('roles')
-        ]);
+    /**
+     * Update the specified patient in storage.
+     *
+     * @param  \App\Http\Requests\Patient\UpdatePatientRequest  $request
+     * @param  \App\Models\User  $patient
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function update(UpdatePatientRequest $request, User $patient)
+    {
+        try {
+            $oldPatient = $patient->toArray();
+
+            $updatedPatient = $this->patientService->updatePatient($patient->id, $request->validated());
+
+            // Log the activity
+            $authUser = JWTAuth::parseToken()->authenticate();
+            $this->patientService->logPatientActivity(
+                $authUser->id,
+                'update',
+                'Updated patient: ' . $updatedPatient->name,
+                $updatedPatient,
+                $request,
+                $oldPatient,
+                $updatedPatient->toArray()
+            );
+
+            return $this->success($updatedPatient, 'Patient updated successfully');
+        } catch (\Exception $e) {
+            return $this->error('Failed to update patient: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Remove the specified patient from storage.
+     *
+     * @param  \App\Models\User  $patient
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy(User $patient, Request $request)
+    {
+        try {
+            $result = $this->patientService->deletePatient($patient->id);
+
+            if (!$result) {
+                return $this->error('Failed to delete patient', 500);
+            }
+
+            // Log the activity
+            $authUser = JWTAuth::parseToken()->authenticate();
+            $this->patientService->logPatientActivity(
+                $authUser->id,
+                'delete',
+                'Deleted patient: ' . $patient->name,
+                $patient,
+                $request
+            );
+
+            return $this->success(null, 'Patient deleted successfully');
+        } catch (\Exception $e) {
+            return $this->error('Failed to delete patient: ' . $e->getMessage(), 500);
+        }
     }
 }

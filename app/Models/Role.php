@@ -41,6 +41,9 @@ class Role extends Model
 
     /**
      * Check if role has specific permission
+     * 
+     * @param string|\App\Models\Permission $permission
+     * @return bool
      */
     public function hasPermission($permission)
     {

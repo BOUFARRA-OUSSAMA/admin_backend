@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Permission extends Model
 {
@@ -31,10 +32,13 @@ class Permission extends Model
     }
 
     /**
-     * Get permission by group
+     * Get permissions grouped by their group attribute
+     *
+     * @return \Illuminate\Support\Collection
      */
     public static function getByGroup()
     {
-        return self::all()->groupBy('group');
+        $permissions = self::all();
+        return $permissions->groupBy('group');
     }
 }
