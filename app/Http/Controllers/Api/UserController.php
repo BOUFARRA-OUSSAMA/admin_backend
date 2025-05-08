@@ -229,4 +229,17 @@ class UserController extends Controller
 
         return $this->success($permissions);
     }
+    
+
+/**
+ * Get user counts by status.
+ *
+ * @return \Illuminate\Http\JsonResponse
+ */
+    public function countsByStatus() { $counts = $this->userService->getUserCountsByStatus();
+    return $this->success(
+    $counts,
+    'User counts by status retrieved successfully'
+    );
+    }
 }

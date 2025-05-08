@@ -210,4 +210,14 @@ class UserService
             $newValues
         );
     }
+
+    /**
+     * Get user counts by status.
+     *
+     * @return array
+     */
+    public function getUserCountsByStatus(): array
+    {
+        return $this->userRepository->getUserCountsByStatus();
+    }
 }

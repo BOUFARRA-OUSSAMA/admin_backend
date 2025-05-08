@@ -54,9 +54,25 @@ class AuthController extends Controller
         }
 
         $credentials = $request->only(['email', 'password']);
+        $email = $request->input('email');
+
+        // Try to find the user by email to get their ID for logging
+        $user = User::where('email', $email)->first();
+        $userId = $user ? $user->id : null;
 
         try {
             if (!$token = JWTAuth::attempt($credentials)) {
+                // Log the failed login attempt
+                $this->authService->logActivity(
+                    $userId,
+                    'failed_login',
+                    'Authentication',
+                    'Failed login attempt with email: ' . $email,
+                    null,
+                    null,
+                    $request->ip()
+                );
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid credentials'
@@ -66,6 +82,17 @@ class AuthController extends Controller
             // Check if user is active
             $user = JWTAuth::user();
             if ($user->status !== 'active') {
+                // Log the inactive account login attempt
+                $this->authService->logActivity(
+                    $user->id,
+                    'failed_login',
+                    'Authentication',
+                    'Login attempt to inactive account',
+                    null,
+                    null,
+                    $request->ip()
+                );
+
                 JWTAuth::invalidate(JWTAuth::getToken());
                 return response()->json([
                     'success' => false,
@@ -86,6 +113,17 @@ class AuthController extends Controller
 
             return $this->respondWithToken($token);
         } catch (JWTException $e) {
+            // Log the exception
+            $this->authService->logActivity(
+                $userId,
+                'failed_login',
+                'Authentication',
+                'Login error: ' . $e->getMessage(),
+                null,
+                null,
+                $request->ip()
+            );
+
             return response()->json([
                 'success' => false,
                 'message' => 'Could not create token',

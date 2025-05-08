@@ -66,4 +66,13 @@ interface UserRepositoryInterface extends EloquentRepositoryInterface
      * @return bool
      */
     public function changeStatus(int $userId, string $status): bool;
+
+
+
+    /**
+     * Get count of users grouped by status.
+     *
+     * @return array
+     */
+    public function getUserCountsByStatus(): array;
 }

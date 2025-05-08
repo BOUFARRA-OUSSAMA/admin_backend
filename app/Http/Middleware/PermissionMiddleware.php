@@ -5,6 +5,9 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class PermissionMiddleware
 {
@@ -19,29 +22,55 @@ class PermissionMiddleware
     public function handle(Request $request, Closure $next, $permission)
     {
         try {
+            // Get the authenticated user using JWTAuth
             $user = JWTAuth::parseToken()->authenticate();
-
+            
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not found'
-                ], 404);
+                    'message' => 'Unauthorized',
+                    'errors' => ['auth' => 'User not authenticated']
+                ], 401);
             }
 
-            // Check if user has the required permission
-            if (!$user->hasPermission($permission)) {
+            // Check if user has the required permission through any of their roles
+            $hasPermission = false;
+            foreach ($user->roles as $role) {
+                foreach ($role->permissions as $perm) {
+                    if ($perm->code === $permission) {
+                        $hasPermission = true;
+                        break 2;
+                    }
+                }
+            }
+
+            if (!$hasPermission) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Access denied. You do not have the required permission: ' . $permission
+                    'message' => 'Forbidden',
+                    'errors' => ['permission' => 'You do not have the required permission: ' . $permission]
                 ], 403);
             }
 
             return $next($request);
-        } catch (\Exception $e) {
+            
+        } catch (TokenExpiredException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Not authorized',
-                'error' => $e->getMessage()
+                'message' => 'Token expired',
+                'errors' => ['token' => $e->getMessage()]
+            ], 401);
+        } catch (TokenInvalidException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token invalid',
+                'errors' => ['token' => $e->getMessage()]
+            ], 401);
+        } catch (JWTException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token absent',
+                'errors' => ['token' => $e->getMessage()]
             ], 401);
         }
     }

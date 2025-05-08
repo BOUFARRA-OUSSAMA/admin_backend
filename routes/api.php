@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AnalyticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,6 +37,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     });
 
     // User routes
+    Route::get('users/counts-by-status', [UserController::class, 'countsByStatus']);
     Route::apiResource('users', UserController::class);
     Route::post('users/{user}/roles', [UserController::class, 'assignRoles']);
     Route::get('users/{user}/roles', [UserController::class, 'getUserRoles']);
@@ -60,6 +62,20 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('activity-logs/modules/{module}', [ActivityLogController::class, 'getModuleLogs']);
     Route::get('activity-logs/actions', [ActivityLogController::class, 'getActions']);
     Route::get('activity-logs/modules', [ActivityLogController::class, 'getModules']);
+
+    // Analytics Routes (with permission middleware)
+    Route::group(['middleware' => 'permission:analytics:view'], function () {
+        // Existing routes
+        Route::get('analytics/users', [AnalyticsController::class, 'getUserStats']);
+        Route::get('analytics/roles', [AnalyticsController::class, 'getRoleStats']);
+        Route::get('analytics/activities', [AnalyticsController::class, 'getActivityStats']);
+        Route::get('analytics/logins', [AnalyticsController::class, 'getLoginStats']);
+
+        // New security analytics route
+        Route::get('analytics/security/login-failures', [AnalyticsController::class, 'getLoginFailures']);
+
+        Route::get('analytics/export/{type}', [AnalyticsController::class, 'exportData']);
+    });
 
     // AI Model Management routes will be added in future phases
 });

@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Repositories\Interfaces\UserRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class UserRepository extends BaseRepository implements UserRepositoryInterface
 {
@@ -105,5 +106,20 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
         $user = $this->findById($userId);
         $user->status = $status;
         return $user->save();
+    }
+
+
+    /**
+     * Get count of users grouped by status.
+     *
+     * @return array
+     */
+    public function getUserCountsByStatus(): array
+    {
+        return $this->model->query()
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
     }
 }
