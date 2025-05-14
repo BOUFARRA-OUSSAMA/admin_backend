@@ -33,13 +33,4 @@ class Kernel extends HttpKernel
         'activity.log' => \App\Http\Middleware\ActivityLogger::class,
     ];
 
-    
-    protected $routeMiddleware = [
-        // …
-        'jwt.auth' => \Tymon\JWTAuth\Http\Middleware\Authenticate::class,
-        'jwt.refresh' => \Tymon\JWTAuth\Http\Middleware\RefreshToken::class,
-        'permission' => \App\Http\Middleware\PermissionMiddleware::class,
-        'activity.log' => \App\Http\Middleware\ActivityLogger::class,
-    ];
-
 }

@@ -80,6 +80,11 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     // AI Model Management routes will be added in future phases
 });
 
+// Add a test route in routes/api.php
+Route::get('/test-middleware', function () {
+    return response()->json(['success' => true, 'message' => 'Middleware is working']);
+})->middleware('permission:analytics:view');
+
 // Fallback route for undefined API endpoints
 Route::fallback(function () {
     return response()->json([
