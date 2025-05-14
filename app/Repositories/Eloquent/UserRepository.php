@@ -116,10 +116,20 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
      */
     public function getUserCountsByStatus(): array
     {
-        return $this->model->query()
+        $counts = $this->model->query()
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
+        
+        // Ensure all statuses are present in the response
+        $allStatuses = ['active', 'pending', 'inactive'];
+        foreach ($allStatuses as $status) {
+            if (!isset($counts[$status])) {
+                $counts[$status] = 0;
+            }
+        }
+        
+        return $counts;
     }
 }
