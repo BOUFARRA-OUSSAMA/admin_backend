@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
@@ -21,7 +20,6 @@ use App\Http\Controllers\Api\AnalyticsController;
 |
 */
 
-// Public routes
 Route::group(['prefix' => 'auth'], function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
@@ -71,7 +69,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/activities', [AnalyticsController::class, 'getActivityStats']);
         Route::get('analytics/logins', [AnalyticsController::class, 'getLoginStats']);
 
-        // New security analytics route
+        // Security analytics route
         Route::get('analytics/security/login-failures', [AnalyticsController::class, 'getLoginFailures']);
 
         Route::get('analytics/export/{type}', [AnalyticsController::class, 'exportData']);
@@ -80,7 +78,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     // AI Model Management routes will be added in future phases
 });
 
-// Add a test route in routes/api.php
+// Test route in routes/api.php
 Route::get('/test-middleware', function () {
     return response()->json(['success' => true, 'message' => 'Middleware is working']);
 })->middleware('permission:analytics:view');
