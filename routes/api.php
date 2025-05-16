@@ -69,7 +69,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/activities', [AnalyticsController::class, 'getActivityStats']);
         Route::get('analytics/user-activity', [AnalyticsController::class, 'getUserActivityStats']);
         Route::get('analytics/logins', [AnalyticsController::class, 'getLoginStats']);
-
+        Route::get('analytics/user-registrations', [AnalyticsController::class, 'getUserRegistrations']); // Add this line
         // Security analytics route
         Route::get('analytics/security/login-failures', [AnalyticsController::class, 'getLoginFailures']);
 

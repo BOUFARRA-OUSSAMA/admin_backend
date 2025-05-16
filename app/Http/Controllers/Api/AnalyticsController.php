@@ -426,8 +426,8 @@ class AnalyticsController extends Controller
             return $user->created_at->format('Y-m-d');
         })->map->count();
         
-        // Generate date range with counts
-        [$allDates, $allCounts] = $this->analyticsService->generateDateRange($startDate, $endDate, $byDate);
+        // Convert the Collection to an array before passing to generateDateRange
+        [$allDates, $allCounts] = $this->analyticsService->generateDateRange($startDate, $endDate, $byDate->toArray());
         
         // Calculate total registrations
         $totalRegistrations = array_sum($allCounts);
