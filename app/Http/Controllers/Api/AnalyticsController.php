@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\ActivityLog;
 use App\Models\User;
 use App\Models\Role;
+use App\Services\AnalyticsService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -14,6 +15,21 @@ use Illuminate\Support\Carbon;
 class AnalyticsController extends Controller
 {
     use ApiResponseTrait;
+
+    /**
+     * @var AnalyticsService
+     */
+    protected $analyticsService;
+
+    /**
+     * AnalyticsController constructor.
+     *
+     * @param AnalyticsService $analyticsService
+     */
+    public function __construct(AnalyticsService $analyticsService)
+    {
+        $this->analyticsService = $analyticsService;
+    }
 
     /**
      * Get user statistics.
@@ -24,26 +40,7 @@ class AnalyticsController extends Controller
     public function getUserStats(Request $request)
     {
         $timeframe = $request->query('timeframe', 'month');
-        $from = null;
-        $to = now();
-        
-        // Set time range based on requested timeframe
-        switch ($timeframe) {
-            case 'day':
-                $from = now()->subDay();
-                break;
-            case 'week':
-                $from = now()->subWeek();
-                break;
-            case 'month':
-                $from = now()->subMonth();
-                break;
-            case 'year':
-                $from = now()->subYear();
-                break;
-            default:
-                $from = now()->subMonth();
-        }
+        [$from, $to] = $this->analyticsService->calculateTimeRange($timeframe);
         
         // Get users created in the timeframe
         $newUsers = User::whereBetween('created_at', [$from, $to])->count();
@@ -120,26 +117,7 @@ class AnalyticsController extends Controller
     public function getActivityStats(Request $request)
     {
         $timeframe = $request->query('timeframe', 'week');
-        $from = null;
-        $to = now();
-        
-        // Set time range based on requested timeframe
-        switch ($timeframe) {
-            case 'day':
-                $from = now()->subDay();
-                break;
-            case 'week':
-                $from = now()->subWeek();
-                break;
-            case 'month':
-                $from = now()->subMonth();
-                break;
-            case 'year':
-                $from = now()->subYear();
-                break;
-            default:
-                $from = now()->subWeek();
-        }
+        [$from, $to] = $this->analyticsService->calculateTimeRange($timeframe);
         
         // Get activities in the timeframe
         $activities = ActivityLog::whereBetween('created_at', [$from, $to])->get();
@@ -180,26 +158,7 @@ class AnalyticsController extends Controller
     public function getLoginStats(Request $request)
     {
         $timeframe = $request->query('timeframe', 'week');
-        $from = null;
-        $to = now();
-        
-        // Set time range based on requested timeframe
-        switch ($timeframe) {
-            case 'day':
-                $from = now()->subDay();
-                break;
-            case 'week':
-                $from = now()->subWeek();
-                break;
-            case 'month':
-                $from = now()->subMonth();
-                break;
-            case 'year':
-                $from = now()->subYear();
-                break;
-            default:
-                $from = now()->subWeek();
-        }
+        [$from, $to] = $this->analyticsService->calculateTimeRange($timeframe);
         
         // Get successful logins
         $successfulLogins = ActivityLog::where('action', 'login')
@@ -248,26 +207,7 @@ class AnalyticsController extends Controller
     public function getLoginFailures(Request $request)
     {
         $timeframe = $request->query('timeframe', 'week');
-        $from = null;
-        $to = now();
-        
-        // Set time range based on requested timeframe
-        switch ($timeframe) {
-            case 'day':
-                $from = now()->subDay();
-                break;
-            case 'week':
-                $from = now()->subWeek();
-                break;
-            case 'month':
-                $from = now()->subMonth();
-                break;
-            case 'year':
-                $from = now()->subYear();
-                break;
-            default:
-                $from = now()->subWeek();
-        }
+        [$from, $to] = $this->analyticsService->calculateTimeRange($timeframe);
         
         // Get failed login attempts
         $failedLogins = ActivityLog::where('action', 'failed_login')
@@ -329,26 +269,7 @@ class AnalyticsController extends Controller
         }
         
         $timeframe = $request->query('timeframe', 'month');
-        $from = null;
-        $to = now();
-        
-        // Set time range based on requested timeframe
-        switch ($timeframe) {
-            case 'day':
-                $from = now()->subDay();
-                break;
-            case 'week':
-                $from = now()->subWeek();
-                break;
-            case 'month':
-                $from = now()->subMonth();
-                break;
-            case 'year':
-                $from = now()->subYear();
-                break;
-            default:
-                $from = now()->subMonth();
-        }
+        [$from, $to] = $this->analyticsService->calculateTimeRange($timeframe);
         
         // Generate file name
         $fileName = $type . '_' . now()->format('Y-m-d_H-i-s') . '.csv';
@@ -357,72 +278,22 @@ class AnalyticsController extends Controller
         return response()->stream(function () use ($type, $from, $to) {
             $file = fopen('php://output', 'w');
             
-            // Add headers
+            // Add headers and data based on type
             switch ($type) {
                 case 'users':
-                    fputcsv($file, ['ID', 'Name', 'Email', 'Status', 'Created At']);
-                    $users = User::whereBetween('created_at', [$from, $to])->get();
-                    foreach ($users as $user) {
-                        fputcsv($file, [$user->id, $user->name, $user->email, $user->status, $user->created_at]);
-                    }
+                    $this->exportUsers($file, $from, $to);
                     break;
                     
                 case 'activities':
-                    fputcsv($file, ['ID', 'User', 'Action', 'Module', 'Description', 'Created At']);
-                    $activities = ActivityLog::with('user')
-                        ->whereBetween('created_at', [$from, $to])
-                        ->get();
-                    foreach ($activities as $activity) {
-                        $userName = $activity->user ? $activity->user->name : 'System';
-                        fputcsv($file, [
-                            $activity->id,
-                            $userName,
-                            $activity->action,
-                            $activity->module,
-                            $activity->description,
-                            $activity->created_at
-                        ]);
-                    }
+                    $this->exportActivities($file, $from, $to);
                     break;
                     
                 case 'logins':
-                    fputcsv($file, ['ID', 'User', 'IP Address', 'User Agent', 'Created At']);
-                    $logins = ActivityLog::with('user')
-                        ->where('action', 'login')
-                        ->whereBetween('created_at', [$from, $to])
-                        ->get();
-                    foreach ($logins as $login) {
-                        $userName = $login->user ? $login->user->name : 'Unknown';
-                        fputcsv($file, [
-                            $login->id,
-                            $userName,
-                            $login->ip_address,
-                            substr($login->user_agent, 0, 100), // Truncate long user agents
-                            $login->created_at
-                        ]);
-                    }
+                    $this->exportLogins($file, $from, $to);
                     break;
                     
                 case 'login-failures':
-                    fputcsv($file, ['ID', 'Email Attempt', 'IP Address', 'User Agent', 'Created At']);
-                    $failures = ActivityLog::where('action', 'failed_login')
-                        ->whereBetween('created_at', [$from, $to])
-                        ->get();
-                    foreach ($failures as $failure) {
-                        // Extract email from old_values if available
-                        $emailAttempt = 'Unknown';
-                        if ($failure->old_values && isset($failure->old_values['email'])) {
-                            $emailAttempt = $failure->old_values['email'];
-                        }
-                        
-                        fputcsv($file, [
-                            $failure->id,
-                            $emailAttempt,
-                            $failure->ip_address,
-                            substr($failure->user_agent, 0, 100), // Truncate long user agents
-                            $failure->created_at
-                        ]);
-                    }
+                    $this->exportLoginFailures($file, $from, $to);
                     break;
             }
             
@@ -431,6 +302,108 @@ class AnalyticsController extends Controller
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
         ]);
+    }
+    
+    /**
+     * Export users data to CSV.
+     *
+     * @param resource $file
+     * @param Carbon $from
+     * @param Carbon $to
+     * @return void
+     */
+    private function exportUsers($file, Carbon $from, Carbon $to): void
+    {
+        fputcsv($file, ['ID', 'Name', 'Email', 'Status', 'Created At']);
+        $users = User::whereBetween('created_at', [$from, $to])->get();
+        foreach ($users as $user) {
+            fputcsv($file, [$user->id, $user->name, $user->email, $user->status, $user->created_at]);
+        }
+    }
+    
+    /**
+     * Export activities data to CSV.
+     *
+     * @param resource $file
+     * @param Carbon $from
+     * @param Carbon $to
+     * @return void
+     */
+    private function exportActivities($file, Carbon $from, Carbon $to): void
+    {
+        fputcsv($file, ['ID', 'User', 'Action', 'Module', 'Description', 'Created At']);
+        $activities = ActivityLog::with('user')
+            ->whereBetween('created_at', [$from, $to])
+            ->get();
+        foreach ($activities as $activity) {
+            $userName = $activity->user ? $activity->user->name : 'System';
+            fputcsv($file, [
+                $activity->id,
+                $userName,
+                $activity->action,
+                $activity->module,
+                $activity->description,
+                $activity->created_at
+            ]);
+        }
+    }
+    
+    /**
+     * Export logins data to CSV.
+     *
+     * @param resource $file
+     * @param Carbon $from
+     * @param Carbon $to
+     * @return void
+     */
+    private function exportLogins($file, Carbon $from, Carbon $to): void
+    {
+        fputcsv($file, ['ID', 'User', 'IP Address', 'User Agent', 'Created At']);
+        $logins = ActivityLog::with('user')
+            ->where('action', 'login')
+            ->whereBetween('created_at', [$from, $to])
+            ->get();
+        foreach ($logins as $login) {
+            $userName = $login->user ? $login->user->name : 'Unknown';
+            fputcsv($file, [
+                $login->id,
+                $userName,
+                $login->ip_address,
+                substr($login->user_agent, 0, 100), // Truncate long user agents
+                $login->created_at
+            ]);
+        }
+    }
+    
+    /**
+     * Export login failures data to CSV.
+     *
+     * @param resource $file
+     * @param Carbon $from
+     * @param Carbon $to
+     * @return void
+     */
+    private function exportLoginFailures($file, Carbon $from, Carbon $to): void
+    {
+        fputcsv($file, ['ID', 'Email Attempt', 'IP Address', 'User Agent', 'Created At']);
+        $failures = ActivityLog::where('action', 'failed_login')
+            ->whereBetween('created_at', [$from, $to])
+            ->get();
+        foreach ($failures as $failure) {
+            // Extract email from old_values if available
+            $emailAttempt = 'Unknown';
+            if ($failure->old_values && isset($failure->old_values['email'])) {
+                $emailAttempt = $failure->old_values['email'];
+            }
+            
+            fputcsv($file, [
+                $failure->id,
+                $emailAttempt,
+                $failure->ip_address,
+                substr($failure->user_agent, 0, 100), // Truncate long user agents
+                $failure->created_at
+            ]);
+        }
     }
     
     /**
@@ -443,43 +416,18 @@ class AnalyticsController extends Controller
     {
         // Get timeframe from query params (7d, 30d, 90d) with default 30d
         $timeframe = $request->query('timeframe', '30d');
-        
-        // Parse timeframe to determine start date
-        $days = 30; // Default
-        switch ($timeframe) {
-            case '7d':
-                $days = 7;
-                break;
-            case '30d':
-                $days = 30;
-                break;
-            case '90d':
-                $days = 90;
-                break;
-        }
-        
-        $from = now()->subDays($days)->startOfDay();
-        $to = now()->endOfDay();
+        [$startDate, $endDate, $days] = $this->analyticsService->calculateDayTimeRange($timeframe);
         
         // Get user registrations within the time range
-        $users = User::whereBetween('created_at', [$from, $to])->get();
+        $users = User::whereBetween('created_at', [$startDate, $endDate])->get();
         
         // Group registrations by date
         $byDate = $users->groupBy(function ($user) {
             return $user->created_at->format('Y-m-d');
         })->map->count();
         
-        // Ensure we have entries for all dates in the range, even if count is 0
-        $allDates = [];
-        $allCounts = [];
-        $currentDate = clone $from;
-        
-        while ($currentDate <= $to) {
-            $dateString = $currentDate->format('Y-m-d');
-            $allDates[] = $dateString;
-            $allCounts[] = $byDate[$dateString] ?? 0;
-            $currentDate->addDay();
-        }
+        // Generate date range with counts
+        [$allDates, $allCounts] = $this->analyticsService->generateDateRange($startDate, $endDate, $byDate);
         
         // Calculate total registrations
         $totalRegistrations = array_sum($allCounts);
@@ -519,6 +467,41 @@ class AnalyticsController extends Controller
                     'average_daily' => $averageDaily,
                     'peak_day' => $peakDay
                 ],
+                'timeframe' => $timeframe
+            ]
+        ]);
+    }
+
+    /**
+     * Get user activity statistics.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getUserActivityStats(Request $request)
+    {
+        // Validate timeframe
+        $timeframe = $request->input('timeframe', '30d');
+        [$startDate, $endDate, $days] = $this->analyticsService->calculateDayTimeRange($timeframe);
+
+        // Fetch login and logout data
+        $loginData = $this->analyticsService->getActivityData('login', $startDate, $endDate);
+        $logoutData = $this->analyticsService->getActivityData('logout', $startDate, $endDate);
+
+        // Calculate active sessions
+        $activeSessions = $this->analyticsService->calculateActiveSessions($startDate, $endDate);
+
+        // Generate daily data
+        $dailyData = $this->analyticsService->generateDailyData($startDate, $days, $loginData, $activeSessions, $logoutData);
+        
+        // Calculate summary
+        $summary = $this->analyticsService->calculateActivitySummary($dailyData);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'summary' => $summary,
+                'daily_data' => $dailyData,
                 'timeframe' => $timeframe
             ]
         ]);

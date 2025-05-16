@@ -67,6 +67,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/users', [AnalyticsController::class, 'getUserStats']);
         Route::get('analytics/roles', [AnalyticsController::class, 'getRoleStats']);
         Route::get('analytics/activities', [AnalyticsController::class, 'getActivityStats']);
+        Route::get('analytics/user-activity', [AnalyticsController::class, 'getUserActivityStats']);
         Route::get('analytics/logins', [AnalyticsController::class, 'getLoginStats']);
 
         // Security analytics route
