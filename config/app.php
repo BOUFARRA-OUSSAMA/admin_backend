@@ -159,6 +159,18 @@ return [
         // App\Providers\RouteServiceProvider::class,
 
         App\Providers\RepositoryServiceProvider::class,
+        Stevebauman\Location\LocationServiceProvider::class,
+    ],
+
+    'aliases' => [
+        'App' => Illuminate\Support\Facades\App::class,
+        'Arr' => Illuminate\Support\Arr::class,
+        'Auth' => Illuminate\Support\Facades\Auth::class,
+        'Blade' => Illuminate\Support\Facades\Blade::class,
+        'Cache' => Illuminate\Support\Facades\Cache::class,
+        'Config' => Illuminate\Support\Facades\Config::class,
+        'DB' => Illuminate\Support\Facades\DB::class,
+        'Location' => Stevebauman\Location\Facades\Location::class,
     ],
 
 ];

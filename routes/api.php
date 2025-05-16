@@ -71,8 +71,6 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/logins', [AnalyticsController::class, 'getLoginStats']);
         Route::get('analytics/user-registrations', [AnalyticsController::class, 'getUserRegistrations']); // Add this line
         // Security analytics route
-        Route::get('analytics/security/login-failures', [AnalyticsController::class, 'getLoginFailures']);
-
         Route::get('analytics/export/{type}', [AnalyticsController::class, 'exportData']);
     });
 

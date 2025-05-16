@@ -197,57 +197,6 @@ class AnalyticsController extends Controller
             ]
         ]);
     }
-
-    /**
-     * Get login failure statistics.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function getLoginFailures(Request $request)
-    {
-        $timeframe = $request->query('timeframe', 'week');
-        [$from, $to] = $this->analyticsService->calculateTimeRange($timeframe);
-        
-        // Get failed login attempts
-        $failedLogins = ActivityLog::where('action', 'failed_login')
-            ->whereBetween('created_at', [$from, $to])
-            ->get();
-        
-        // Group by date
-        $byDate = $failedLogins->groupBy(function ($item) {
-            return $item->created_at->format('Y-m-d');
-        })->map->count();
-        
-        // Group by IP address
-        $byIp = $failedLogins->groupBy('ip_address')->map->count()->sortDesc()->take(10);
-        
-        // Group by user (if user exists)
-        $byUser = $failedLogins->whereNotNull('user_id')
-            ->groupBy('user_id')
-            ->map(function ($group) {
-                $user = User::find($group->first()->user_id);
-                $email = $user ? $user->email : 'Unknown';
-                return [
-                    'count' => $group->count(),
-                    'email' => $email,
-                    'last_attempt' => $group->sortByDesc('created_at')->first()->created_at
-                ];
-            })
-            ->sortByDesc('count')
-            ->take(10)
-            ->values();
-        
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'total_failed_attempts' => $failedLogins->count(),
-                'by_date' => $byDate,
-                'by_ip' => $byIp,
-                'by_user' => $byUser
-            ]
-        ]);
-    }
     
     /**
      * Export analytics data as CSV.
@@ -258,7 +207,7 @@ class AnalyticsController extends Controller
      */
     public function exportData(Request $request, $type)
     {
-        $allowedTypes = ['users', 'activities', 'logins', 'login-failures'];
+        $allowedTypes = ['users', 'activities', 'logins'];
         
         if (!in_array($type, $allowedTypes)) {
             return response()->json([
@@ -290,10 +239,6 @@ class AnalyticsController extends Controller
                     
                 case 'logins':
                     $this->exportLogins($file, $from, $to);
-                    break;
-                    
-                case 'login-failures':
-                    $this->exportLoginFailures($file, $from, $to);
                     break;
             }
             
@@ -371,37 +316,6 @@ class AnalyticsController extends Controller
                 $login->ip_address,
                 substr($login->user_agent, 0, 100), // Truncate long user agents
                 $login->created_at
-            ]);
-        }
-    }
-    
-    /**
-     * Export login failures data to CSV.
-     *
-     * @param resource $file
-     * @param Carbon $from
-     * @param Carbon $to
-     * @return void
-     */
-    private function exportLoginFailures($file, Carbon $from, Carbon $to): void
-    {
-        fputcsv($file, ['ID', 'Email Attempt', 'IP Address', 'User Agent', 'Created At']);
-        $failures = ActivityLog::where('action', 'failed_login')
-            ->whereBetween('created_at', [$from, $to])
-            ->get();
-        foreach ($failures as $failure) {
-            // Extract email from old_values if available
-            $emailAttempt = 'Unknown';
-            if ($failure->old_values && isset($failure->old_values['email'])) {
-                $emailAttempt = $failure->old_values['email'];
-            }
-            
-            fputcsv($file, [
-                $failure->id,
-                $emailAttempt,
-                $failure->ip_address,
-                substr($failure->user_agent, 0, 100), // Truncate long user agents
-                $failure->created_at
             ]);
         }
     }
