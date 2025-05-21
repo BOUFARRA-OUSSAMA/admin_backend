@@ -84,7 +84,8 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
         }
 
         if (isset($filters['status']) && $filters['status']) {
-            $query->where('status', $filters['status']);
+            $statusValues = explode(',', $filters['status']);
+            $query->whereIn('status', $statusValues);
         }
 
         if (isset($filters['role_id']) && $filters['role_id']) {
