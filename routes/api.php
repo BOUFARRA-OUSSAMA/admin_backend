@@ -40,6 +40,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::post('users/{user}/roles', [UserController::class, 'assignRoles']);
     Route::get('users/{user}/roles', [UserController::class, 'getUserRoles']);
     Route::get('users/{user}/permissions', [UserController::class, 'getUserPermissions']);
+    Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])
+        ->middleware('permission:users:reset-password');
 
     // Role routes
     Route::apiResource('roles', RoleController::class);

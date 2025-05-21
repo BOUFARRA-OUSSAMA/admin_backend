@@ -7,7 +7,9 @@ use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 
 class UserService
 {
@@ -219,5 +221,33 @@ class UserService
     public function getUserCountsByStatus(): array
     {
         return $this->userRepository->getUserCountsByStatus();
+    }
+
+    /**
+     * Reset a user's password.
+     * 
+     * @param int $userId
+     * @param string $password
+     * @param bool $forceChange
+     * @return bool
+     */
+    public function resetUserPassword(int $userId, string $password, bool $forceChange = true): bool
+    {
+        $user = $this->userRepository->findById($userId);
+        
+        // Hash the new password
+        $user->password = Hash::make($password);
+        
+        // Set password change flag if required
+        if ($forceChange && !Schema::hasColumn('users', 'password_change_required')) {
+            // Log that the column doesn't exist, but continue
+            // This is a failsafe in case your schema doesn't have this column
+            // You may want to add this column via a migration
+            Log::warning('The password_change_required column does not exist on the users table.');
+        } else if ($forceChange) {
+            $user->password_change_required = true;
+        }
+        
+        return $user->save();
     }
 }

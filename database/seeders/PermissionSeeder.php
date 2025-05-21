@@ -24,6 +24,7 @@ class PermissionSeeder extends Seeder
                 ['name' => 'Edit Users', 'code' => 'users:edit'],
                 ['name' => 'Delete Users', 'code' => 'users:delete'],
                 ['name' => 'Manage User Roles', 'code' => 'users:manage-roles'],
+                ['name' => 'Reset User Password', 'code' => 'users:reset-password'],
             ],
 
             // Role Management
@@ -131,6 +132,5 @@ class PermissionSeeder extends Seeder
             $receptionistRole->permissions()->sync($receptionistPermissions);
         }
 
-        // Assign no permissions to patient and guest roles as they should have minimal access
     }
 }

@@ -11,6 +11,7 @@ use App\Services\RoleService;
 use App\Services\AuthService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class RoleController extends Controller
 {
@@ -39,7 +40,7 @@ class RoleController extends Controller
     }
 
     /**
-     * Display a listing of the roles.
+     * Display a listing of the roles with search capability.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -51,7 +52,7 @@ class RoleController extends Controller
         $sortDirection = $request->query('sort_direction', 'asc');
         $search = $request->query('search');
 
-        $roles = $this->roleService->getAllRoles($perPage, $sortBy, $sortDirection, $search);
+        $roles = $this->getAllRoles($perPage, $sortBy, $sortDirection, $search);
 
         return $this->paginated($roles, 'Roles retrieved successfully');
     }
@@ -174,5 +175,30 @@ class RoleController extends Controller
         );
 
         return $this->success($updatedRole, 'Permissions assigned successfully');
+    }
+
+    /**
+     * Get all roles with pagination and search
+     * 
+     * @param int $perPage
+     * @param string $sortBy
+     * @param string $sortDirection
+     * @param string|null $search
+     * @return LengthAwarePaginator
+     */
+    public function getAllRoles(int $perPage = 15, string $sortBy = 'name', string $sortDirection = 'asc', ?string $search = null): LengthAwarePaginator
+    {
+        $query = Role::query()->with('permissions')->withCount('permissions');
+
+        // Apply search if provided
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderBy($sortBy, $sortDirection)->paginate($perPage);
     }
 }

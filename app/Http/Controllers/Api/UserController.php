@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\AssignRolesRequest;
+use App\Http\Requests\User\ResetPasswordRequest;
 use App\Models\User;
 use App\Services\UserService;
 use App\Services\AuthService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class UserController extends Controller
@@ -40,7 +42,7 @@ class UserController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource with search capability.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -229,17 +231,71 @@ class UserController extends Controller
 
         return $this->success($permissions);
     }
-    
 
-/**
- * Get user counts by status.
- *
- * @return \Illuminate\Http\JsonResponse
- */
-    public function countsByStatus() { $counts = $this->userService->getUserCountsByStatus();
-    return $this->success(
-    $counts,
-    'User counts by status retrieved successfully'
-    );
+    /**
+     * Get user counts by status.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function countsByStatus()
+    {
+        $counts = $this->userService->getUserCountsByStatus();
+        return $this->success(
+            $counts,
+            'User counts by status retrieved successfully'
+        );
     }
+
+    /**
+     * Reset a user's password.
+     *
+     * @param  \App\Http\Requests\User\ResetPasswordRequest  $request
+     * @param  \App\Models\User  $user
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function resetPassword(ResetPasswordRequest $request, User $user)
+    {
+        try {
+            $authUser = JWTAuth::parseToken()->authenticate();
+
+            // Don't allow resetting your own password through this endpoint
+            if ($authUser->id === $user->id) {
+                return $this->error('You cannot reset your own password through this endpoint', 403);
+            }
+
+            $data = $request->validated();
+
+            // Generate a password if not provided
+            $password = $data['password'] ?? Str::random(10);
+            $forceChange = $data['force_change'] ?? true;
+
+            $result = $this->userService->resetUserPassword($user->id, $password, $forceChange);
+
+            // Log the activity
+            $this->userService->logUserActivity(
+                $authUser->id,
+                'reset_password',
+                'Reset password for user: ' . $user->name,
+                $user,
+                $request
+            );
+
+            return $this->success([
+                'temporary_password' => $password,
+                'force_change' => $forceChange
+            ], 'Password reset successfully');
+        } catch (\Exception $e) {
+            return $this->error('Failed to reset password: ' . $e->getMessage(), 500);
+        }
+    }
+}
+
+// Update the search condition to remove username reference
+if (isset($filters['search']) && $filters['search']) {
+    $search = $filters['search'];
+    $query->where(function ($q) use ($search) {
+        $q->where('name', 'like', "%{$search}%")
+          ->orWhere('email', 'like', "%{$search}%")
+          ->orWhere('id', 'like', "%{$search}%");
+    });
 }
