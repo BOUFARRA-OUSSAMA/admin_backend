@@ -435,10 +435,225 @@ Authorization: Bearer {access_token}
 }
 ```
 
-## Roles
+## Role Management
 
 ### List Roles
 **Endpoint:** `GET /api/roles`
+
+**Query Parameters:**
+- `search`: Search term for role name, code, or description
+- `page`: Page number (default: 1)
+- `per_page`: Items per page (default: 15)
+- `sort_by`: Field to sort by (default: 'name')
+- `sort_direction`: Sort direction ('asc' or 'desc', default: 'asc')
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Required Permission:** `roles:view`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Roles retrieved successfully",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "name": "Administrator",
+        "code": "admin",
+        "description": "Full system access",
+        "created_at": "2025-04-24T15:04:59.000000Z",
+        "updated_at": "2025-04-24T15:04:59.000000Z",
+        "permissions_count": 27,
+        "permissions": [
+          {
+            "id": 1,
+            "name": "View Users",
+            "code": "users:view",
+            "group": "users",
+            "description": "View Users permission"
+          }
+          // More permissions...
+        ]
+      }
+      // More roles...
+    ],
+    "pagination": {
+      "total": 5,
+      "count": 5,
+      "per_page": 15,
+      "current_page": 1,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+### Get Single Role
+
+**Endpoint:** `GET /api/roles/{id}`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Required Permission:** `roles:view`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Role retrieved successfully",
+  "data": {
+    "id": 2,
+    "name": "Doctor",
+    "code": "doctor",
+    "description": "Healthcare provider with patient access",
+    "created_at": "2025-04-24T15:04:59.000000Z",
+    "updated_at": "2025-04-24T15:04:59.000000Z",
+    "permissions": [
+      {
+        "id": 11,
+        "name": "View Patients",
+        "code": "patients:view",
+        "group": "patients",
+        "description": "View Patients permission"
+      }
+      // More permissions...
+    ]
+  }
+}
+```
+
+### Create Role
+
+**Endpoint:** `POST /api/roles`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Required Permission:** `roles:create`
+
+**Request Body:**
+```json
+{
+  "name": "Clinical Assistant",
+  "code": "clinical_assistant",
+  "description": "Assists doctors with patient management",
+  "permissions": [13, 14, 15, 21]
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Role created successfully",
+  "data": {
+    "id": 6,
+    "name": "Clinical Assistant",
+    "code": "clinical_assistant",
+    "description": "Assists doctors with patient management",
+    "created_at": "2025-05-23T10:15:30.000000Z",
+    "updated_at": "2025-05-23T10:15:30.000000Z",
+    "permissions": [
+      {
+        "id": 13,
+        "name": "View Patients",
+        "code": "patients:view",
+        "group": "patients",
+        "description": "View Patients permission"
+      }
+      // More permissions...
+    ]
+  }
+}
+```
+
+**Important Notes:**
+- The `code` should be URL-friendly, lowercase, and use underscores instead of spaces
+- The `permissions` array contains permission IDs to assign to the role
+
+### Update Role
+
+**Endpoint:** `PUT /api/roles/{id}`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Required Permission:** `roles:edit`
+
+**Request Body:**
+```json
+{
+  "name": "Clinical Assistant",
+  "description": "Assists doctors with patient management and records",
+  "permissions": [13, 14, 15, 21, 22]
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Role updated successfully",
+  "data": {
+    "id": 6,
+    "name": "Clinical Assistant",
+    "code": "clinical_assistant",
+    "description": "Assists doctors with patient management and records",
+    "created_at": "2025-05-23T10:15:30.000000Z",
+    "updated_at": "2025-05-23T10:30:45.000000Z",
+    "permissions": [
+      // Updated permissions list
+    ]
+  }
+}
+```
+
+**Important Notes:**
+- You can update role details and permissions in one request
+- Protected roles (admin, doctor, patient, guest) may have restrictions on renaming or code changes
+
+### Delete Role
+
+**Endpoint:** `DELETE /api/roles/{id}`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Required Permission:** `roles:delete`
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Role deleted successfully"
+}
+```
+
+**Important Notes:**
+- This endpoint will return a 403 error if you try to delete protected roles
+- The backend detaches role associations with users and permissions before deletion
+
+### Check if Role Name Exists
+
+**Endpoint:** `GET /api/roles/check-name`
+
+**Query Parameters:**
+- `name`: Name to check
+- `excludeId`: (Optional) Role ID to exclude from check (for edits)
 
 **Headers:**
 ```
@@ -449,31 +664,12 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Admin",
-      "code": "admin",
-      "description": "Administrator role",
-      "created_at": "2025-04-24T10:20:00.000000Z",
-      "updated_at": "2025-04-24T10:20:00.000000Z",
-      "permissions_count": 15
-    },
-    {
-      "id": 2,
-      "name": "Staff",
-      "code": "staff",
-      "description": "Regular staff member",
-      "created_at": "2025-04-24T10:20:00.000000Z",
-      "updated_at": "2025-04-24T10:20:00.000000Z",
-      "permissions_count": 5
-    }
-    // more roles
-  ]
+  "exists": true  // or false if name doesn't exist
 }
 ```
 
 ### Assign Permissions to Role
+
 **Endpoint:** `POST /api/roles/{role}/permissions`
 
 **Headers:**
@@ -481,10 +677,12 @@ Authorization: Bearer {access_token}
 Authorization: Bearer {access_token}
 ```
 
-**Request:**
+**Required Permission:** `roles:assign-permissions`
+
+**Request Body:**
 ```json
 {
-  "permission_ids": [1, 2, 3, 4]
+  "permissions": [1, 2, 3, 13, 14, 15]
 }
 ```
 
@@ -495,23 +693,13 @@ Authorization: Bearer {access_token}
   "message": "Permissions assigned successfully",
   "data": {
     "id": 2,
-    "name": "Staff",
-    "code": "staff",
-    "description": "Regular staff member",
-    "created_at": "2025-04-24T10:20:00.000000Z",
-    "updated_at": "2025-04-24T10:20:00.000000Z",
+    "name": "Doctor",
+    "code": "doctor",
+    "description": "Healthcare provider with patient access",
+    "created_at": "2025-04-24T15:04:59.000000Z",
+    "updated_at": "2025-05-23T11:20:15.000000Z",
     "permissions": [
-      {
-        "id": 1,
-        "name": "View Users",
-        "code": "users:view",
-        "group": "users",
-        "pivot": {
-          "role_id": 2,
-          "permission_id": 1
-        }
-      },
-      // more permissions
+      // Updated permissions list
     ]
   }
 }
@@ -522,6 +710,13 @@ Authorization: Bearer {access_token}
 ### List Permissions
 **Endpoint:** `GET /api/permissions`
 
+**Query Parameters:**
+- `search`: Filter permissions by name or code
+- `group`: Filter permissions by group name
+- `per_page`: Items per page (default: 50)
+- `sort_by`: Field to sort by (default: 'group')
+- `sort_direction`: Sort direction ('asc' or 'desc')
+
 **Headers:**
 ```
 Authorization: Bearer {access_token}
@@ -531,29 +726,37 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "View Users",
-      "code": "users:view",
-      "group": "users",
-      "created_at": "2025-04-24T10:20:00.000000Z",
-      "updated_at": "2025-04-24T10:20:00.000000Z"
-    },
-    {
-      "id": 2,
-      "name": "Create Users",
-      "code": "users:create",
-      "group": "users",
-      "created_at": "2025-04-24T10:20:00.000000Z",
-      "updated_at": "2025-04-24T10:20:00.000000Z"
+  "message": "Permissions retrieved successfully",
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "name": "View Users",
+        "code": "users:view",
+        "group": "users",
+        "description": "View Users permission"
+      },
+      {
+        "id": 2,
+        "name": "Create Users",
+        "code": "users:create",
+        "group": "users",
+        "description": "Create Users permission"
+      }
+      // more permissions
+    ],
+    "pagination": {
+      "total": 30,
+      "count": 30,
+      "per_page": 50,
+      "current_page": 1,
+      "total_pages": 1
     }
-    // more permissions
-  ]
+  }
 }
 ```
 
-### Get Permission Groups
+### Get Permissions Grouped by Category
 **Endpoint:** `GET /api/permissions/groups`
 
 **Headers:**
@@ -565,33 +768,50 @@ Authorization: Bearer {access_token}
 ```json
 {
   "success": true,
-  "data": [
-    {
-      "name": "users",
-      "permissions": [
-        {
-          "id": 1,
-          "name": "View Users",
-          "code": "users:view",
-          "group": "users"
-        },
-        {
-          "id": 2,
-          "name": "Create Users",
-          "code": "users:create",
-          "group": "users"
-        }
-        // more permissions in this group
-      ]
-    },
-    {
-      "name": "roles",
-      "permissions": [
-        // permissions in the roles group
-      ]
-    }
-    // more groups
-  ]
+  "message": "Permission groups retrieved successfully",
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "name": "View Users",
+        "code": "users:view",
+        "group": "users",
+        "description": "View Users permission"
+      },
+      {
+        "id": 2,
+        "name": "Create Users",
+        "code": "users:create",
+        "group": "users",
+        "description": "Create Users permission"
+      }
+      // More user permissions
+    ],
+    "roles": [
+      // Role permissions
+    ],
+    "patients": [
+      // Patient permissions
+    ]
+    // More groups
+  }
+}
+```
+
+### Get Permission Groups List
+**Endpoint:** `GET /api/permissions/groups/list`
+
+**Headers:**
+```
+Authorization: Bearer {access_token}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Permission groups list retrieved successfully",
+  "data": ["users", "roles", "patients", "ai", "logs", "analytics"]
 }
 ```
 
