@@ -49,16 +49,9 @@ class PermissionService
     public function getPermissionsByGroup(): array
     {
         $groupedPermissions = $this->permissionRepository->getPermissionsByGroup();
-
-        $result = [];
-        foreach ($groupedPermissions as $group => $permissions) {
-            $result[] = [
-                'group' => $group,
-                'permissions' => $permissions
-            ];
-        }
-
-        return $result;
+        
+        // Return directly as the collection is already grouped by key
+        return $groupedPermissions->toArray();
     }
 
     /**
