@@ -12,6 +12,7 @@ use App\Services\AuthService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class RoleController extends Controller
 {
@@ -52,7 +53,7 @@ class RoleController extends Controller
         $sortDirection = $request->query('sort_direction', 'asc');
         $search = $request->query('search');
 
-        $roles = $this->getAllRoles($perPage, $sortBy, $sortDirection, $search);
+        $roles = $this->roleService->getAllRoles($perPage, $sortBy, $sortDirection, $search);
 
         return $this->paginated($roles, 'Roles retrieved successfully');
     }
@@ -104,8 +105,29 @@ class RoleController extends Controller
      */
     public function update(UpdateRoleRequest $request, Role $role)
     {
-        $updatedRole = $this->roleService->updateRole($role->id, $request->validated());
+        // Check if it's a protected role before allowing name/code changes
+        $protectedRoles = ['admin', 'patient', 'doctor', 'guest'];
+        
+        if (in_array($role->code, $protectedRoles) && 
+            (isset($request->name) || isset($request->code))) {
+            return $this->error('Cannot modify name or code of system roles.', 403);
+        }
+        
+        // Get the validated data
+        $validatedData = $request->validated();
+        
+        // Ensure permissions are included in the validated data
+        $updatedRole = $this->roleService->updateRole($role->id, $validatedData);
 
+        if (isset($validatedData['permissions'])) {
+            Log::debug('Updating role permissions', [
+                'role_id' => $role->id,
+                'permissions' => $validatedData['permissions']
+            ]);
+            $role->permissions()->sync($validatedData['permissions']);
+            Log::debug('Permission sync complete');
+        }
+        
         // Log the activity
         $user = $this->authService->getAuthenticatedUser();
         $this->authService->logActivity(
@@ -175,6 +197,31 @@ class RoleController extends Controller
         );
 
         return $this->success($updatedRole, 'Permissions assigned successfully');
+    }
+
+    /**
+     * Check if a role name already exists.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkNameExists(Request $request)
+    {
+        $name = $request->query('name');
+        $excludeId = (int) $request->query('excludeId', 0);
+        
+        $query = Role::where('name', $name);
+        
+        if ($excludeId > 0) {
+            $query->where('id', '!=', $excludeId);
+        }
+        
+        $exists = $query->exists();
+        
+        return response()->json([
+            'success' => true,
+            'exists' => $exists
+        ]);
     }
 
     /**

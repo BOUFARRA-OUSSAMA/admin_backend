@@ -19,14 +19,14 @@ class RoleService
      */
     public function getAllRoles(int $perPage = 15, string $sortBy = 'name', string $sortDirection = 'asc', ?string $search = null): LengthAwarePaginator
     {
-        $query = Role::query()->with('permissions');
+        $query = Role::query()->with('permissions')->withCount('permissions');
 
         // Apply search if provided
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('code', 'ilike', "%{$search}%")
+                    ->orWhere('description', 'ilike', "%{$search}%");
             });
         }
 
@@ -90,6 +90,11 @@ class RoleService
         }
 
         $role->save();
+
+        // Add this section to handle permissions
+        if (isset($data['permissions'])) {
+            $role->permissions()->sync($data['permissions']);
+        }
 
         return $role->load('permissions');
     }

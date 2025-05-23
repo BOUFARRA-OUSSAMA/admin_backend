@@ -44,8 +44,16 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         ->middleware('permission:users:reset-password');
 
     // Role routes
-    Route::apiResource('roles', RoleController::class);
-    Route::post('roles/{role}/permissions', [RoleController::class, 'assignPermissions']);
+    Route::get('roles/check-name', [RoleController::class, 'checkNameExists']);
+    Route::apiResource('roles', RoleController::class)->middleware([
+        'index' => 'permission:roles:view',
+        'show' => 'permission:roles:view',
+        'store' => 'permission:roles:create',
+        'update' => 'permission:roles:edit',
+        'destroy' => 'permission:roles:delete',
+    ]);
+    Route::post('roles/{role}/permissions', [RoleController::class, 'assignPermissions'])
+        ->middleware('permission:roles:assign-permissions');
 
     // Permission routes
     Route::get('permissions', [PermissionController::class, 'index']);

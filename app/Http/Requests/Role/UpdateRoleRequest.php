@@ -34,7 +34,6 @@ class UpdateRoleRequest extends FormRequest
      */
     public function rules()
     {
-        // Access the route parameter through the route method
         $role = request()->route('role');
 
         return [
@@ -47,6 +46,8 @@ class UpdateRoleRequest extends FormRequest
                 Rule::unique('roles')->ignore($role->id)
             ],
             'description' => 'nullable|string|max:1000',
+            'permissions' => 'sometimes|array',
+            'permissions.*' => 'exists:permissions,id',
         ];
     }
 
