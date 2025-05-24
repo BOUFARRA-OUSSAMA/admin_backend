@@ -11,6 +11,7 @@ use App\Services\AnalyticsService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class AnalyticsController extends Controller
 {
@@ -418,6 +419,35 @@ class AnalyticsController extends Controller
                 'daily_data' => $dailyData,
                 'timeframe' => $timeframe
             ]
+        ]);
+    }
+
+    /**
+     * Get current active sessions for JWT authenticated users.
+     *
+     * @return array
+     */
+    /**
+     * Get current active user sessions.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getCurrentActiveSessions(Request $request)
+    {
+        $cacheKey = 'active_sessions';
+        $cacheTtl = 30; // seconds
+
+        if (Cache::has($cacheKey)) {
+            $data = Cache::get($cacheKey);
+        } else {
+            $data = $this->analyticsService->getCurrentActiveSessions();
+            Cache::put($cacheKey, $data, $cacheTtl);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
         ]);
     }
 }

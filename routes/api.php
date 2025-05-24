@@ -82,6 +82,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/user-registrations', [AnalyticsController::class, 'getUserRegistrations']); // Add this line
         // Security analytics route
         Route::get('analytics/export/{type}', [AnalyticsController::class, 'exportData']);
+        Route::get('analytics/active-sessions', [AnalyticsController::class, 'getCurrentActiveSessions'])
+            ->middleware('jwt.auth')
+            ->middleware('permission:analytics:view');
     });
 
     // AI Model Management routes will be added in future phases

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AuthService;
+use App\Services\JwtTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -23,13 +24,20 @@ class AuthController extends Controller
     protected $authService;
 
     /**
+     * @var JwtTokenService
+     */
+    protected $jwtTokenService;
+
+    /**
      * AuthController constructor.
      * 
      * @param AuthService $authService
+     * @param JwtTokenService $jwtTokenService
      */
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, JwtTokenService $jwtTokenService)
     {
         $this->authService = $authService;
+        $this->jwtTokenService = $jwtTokenService;
     }
 
     /**
@@ -99,6 +107,13 @@ class AuthController extends Controller
                     'message' => 'Your account is inactive. Please contact the administrator.'
                 ], 403);
             }
+
+            // Update last_login_at timestamp
+            $user->last_login_at = now();
+            $user->save();
+
+            // Record the token after successful authentication
+            $this->jwtTokenService->recordToken($user->id, $token);
 
             // Log the login activity
             $this->authService->logActivity(
@@ -198,6 +213,9 @@ class AuthController extends Controller
                 $request->ip()
             );
 
+            // Revoke the token
+            $this->jwtTokenService->revokeToken(JWTAuth::getToken()->get());
+
             JWTAuth::invalidate(JWTAuth::getToken());
 
             return response()->json([
@@ -257,7 +275,13 @@ class AuthController extends Controller
     public function refresh()
     {
         try {
-            $token = JWTAuth::parseToken()->refresh();
+            $oldToken = JWTAuth::getToken();
+            $token = JWTAuth::refresh($oldToken);
+            
+            // Revoke old token and record new one
+            $this->jwtTokenService->revokeToken($oldToken->get());
+            $this->jwtTokenService->recordToken(JWTAuth::setToken($token)->authenticate()->id, $token);
+            
             return $this->respondWithToken($token);
         } catch (TokenExpiredException $e) {
             return response()->json([
