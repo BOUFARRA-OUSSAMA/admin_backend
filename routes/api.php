@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\AiDiagnosticController;
 
 /*
 |--------------------------------------------------------------------------
@@ -86,8 +87,17 @@ Route::group(['middleware' => ['jwt.auth']], function () {
             ->middleware('jwt.auth')
             ->middleware('permission:analytics:view');
     });
+});
 
-    // AI Model Management routes will be added in future phases
+// AI Diagnostic routes 
+Route::group(['middleware' => ['jwt.auth', 'permission:ai:use'], 'prefix' => 'ai'], function () {
+    Route::get('/models', [AiDiagnosticController::class, 'getAvailableModels']);
+    Route::post('/analyze', [AiDiagnosticController::class, 'analyzeImage']);
+});
+// Patient AI Analyses routes
+Route::group(['middleware' => ['jwt.auth', 'permission:patients:view-medical']], function () {
+    Route::get('/patients/{patient}/ai-analyses', [AiDiagnosticController::class, 'getPatientAnalyses']);
+    Route::get('/ai-analyses/{analysis}', [AiDiagnosticController::class, 'getAnalysis']);
 });
 
 // Test route in routes/api.php
