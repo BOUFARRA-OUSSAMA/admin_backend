@@ -8,10 +8,19 @@ use App\Models\User;
 use App\Models\Role;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Collection;
+use App\Services\JwtTokenService;
 
 class AnalyticsService
 {
+    protected $jwtTokenService;
+    
+    public function __construct(JwtTokenService $jwtTokenService)
+    {
+        $this->jwtTokenService = $jwtTokenService;
+    }
+
     /**
      * Calculate time range based on standard timeframe parameter.
      *
@@ -226,5 +235,49 @@ class AnalyticsService
         }
         
         return [$allDates, $allCounts];
+    }
+
+    /**
+     * Get current active sessions for JWT authenticated users.
+     *
+     * @return array
+     */
+    public function getCurrentActiveSessions(): array
+    {
+        // Get active sessions from JWT tokens table (most accurate method)
+        $activeTokenSessions = $this->jwtTokenService->getActiveSessionsCount(30);
+        
+        // Fallback methods if the token tracking is just being implemented
+        $activeJwtUsers = DB::table('users')
+            ->whereNotNull('last_login_at')
+            ->where('last_login_at', '>=', now()->subMinutes(30))
+            ->count();
+            
+        $recentLogins = ActivityLog::where('action', 'login')
+            ->where('created_at', '>=', now()->subMinutes(30))
+            ->distinct('user_id')
+            ->count('user_id');
+            
+        // Use the most reliable data source available
+        $activeUsers = max($activeTokenSessions, $activeJwtUsers, $recentLogins, 1);
+        
+        // Add this logging code here
+        Log::debug('Active sessions calculation', [
+            'token_sessions' => $activeTokenSessions,
+            'jwt_users' => $activeJwtUsers,
+            'recent_logins' => $recentLogins,
+            'result' => $activeUsers
+        ]);
+        
+        return [
+            'active_users' => $activeUsers,
+            'measured_at' => now()->toIso8601String(),
+            'auth_method' => 'jwt',
+            'sources' => [
+                'tokens' => $activeTokenSessions,
+                'last_login' => $activeJwtUsers,
+                'activity_logs' => $recentLogins
+            ]
+        ];
     }
 }

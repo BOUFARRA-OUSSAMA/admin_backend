@@ -6,6 +6,9 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use App\Services\AnalyticsService;
+use App\Services\JwtTokenService;
+use Illuminate\Console\Scheduling\Schedule;
+use App\Console\Commands\CleanupExpiredTokens;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,9 +17,27 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(AnalyticsService::class, function ($app) {
-            return new AnalyticsService();
+        // Register JwtTokenService first if needed
+        $this->app->singleton(JwtTokenService::class, function ($app) {
+            return new JwtTokenService();
         });
+
+        // Register AnalyticsService with its dependency
+        $this->app->singleton(AnalyticsService::class, function ($app) {
+            return new AnalyticsService(
+                $app->make(JwtTokenService::class)
+            );
+        });
+
+        // Register the command in the container
+        $this->app->singleton('command.jwt.cleanup', function ($app) {
+            return new CleanupExpiredTokens();
+        });
+
+        // Add the command to Laravel's command list
+        $this->commands([
+            'command.jwt.cleanup',
+        ]);
     }
 
     /**
@@ -29,6 +50,10 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
-        // Then add back the ThrottleRequests middleware in bootstrap/app.php
+        // Register the scheduled task
+        $this->app->booted(function () {
+            $schedule = $this->app->make(Schedule::class);
+            $schedule->command('jwt:cleanup-tokens')->daily();
+        });
     }
 }
