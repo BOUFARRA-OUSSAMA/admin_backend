@@ -1,5 +1,6 @@
 ## Admin User Setup
 
+BEFORE MIGRATING USE `php artisan vendor:publish --provider="Spatie\Activitylog\ActivitylogServiceProvider" --tag="activitylog-migrations"`
 Use the following commands in `php artisan tinker` to create the initial admin user:
 
 ```php

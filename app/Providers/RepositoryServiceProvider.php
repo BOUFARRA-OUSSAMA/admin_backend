@@ -12,6 +12,8 @@ use App\Repositories\Eloquent\ActivityLogRepository;
 use App\Repositories\Eloquent\BaseRepository;
 use App\Repositories\Eloquent\UserRepository;
 use App\Repositories\Eloquent\PatientRepository;
+use App\Repositories\Interfaces\AiAnalysisRepositoryInterface;
+use App\Repositories\Eloquent\AiAnalysisRepository;
 
 use Illuminate\Support\ServiceProvider;
 
@@ -29,6 +31,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(PatientRepositoryInterface::class, PatientRepository::class);
         $this->app->bind(PermissionRepositoryInterface::class, PermissionRepository::class);
         $this->app->bind(ActivityLogRepositoryInterface::class, ActivityLogRepository::class);
+        $this->app->bind(AiAnalysisRepositoryInterface::class, AiAnalysisRepository::class);
         // Register other repository bindings here
     }
 
