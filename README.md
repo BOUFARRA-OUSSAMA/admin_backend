@@ -1,3 +1,21 @@
+```php
+composer install
+# Copy the example environment file
+cp .env.example .env
+
+# Generate Laravel application key
+php artisan key:generate
+
+# Generate JWT secret key
+php artisan jwt:secret
+
+# Run database migrations
+php artisan migrate
+
+# Seed the database with initial data (if available)
+php artisan db:seed
+```
+
 ## Admin User Setup
 
 BEFORE MIGRATING USE `php artisan vendor:publish --provider="Spatie\Activitylog\ActivitylogServiceProvider" --tag="activitylog-migrations"`
