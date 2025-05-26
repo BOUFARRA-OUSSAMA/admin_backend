@@ -124,6 +124,7 @@ public function analyzeImage(Request $request)
             $result['analysis_id'] = $analysis->id;
         }
         
+        $this->logAiUsage($user->id, $conditionType, $result);
         return $this->success($result, 'Image analyzed successfully');
     } catch (\Exception $e) {
         Log::error('AI image analysis failed', [
