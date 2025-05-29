@@ -15,7 +15,7 @@ class UpdateUsersTableAddStatusAndPhone extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('phone')->nullable()->after('email');
-            $table->enum('status', ['active', 'inactive', 'pending'])->default('pending')->after('password');
+            $table->enum('status', ['active', 'inactive', 'pending'])->default('active')->after('password');
             $table->softDeletes(); // Add soft delete for users
         });
     }

@@ -106,7 +106,7 @@ class RoleController extends Controller
     public function update(UpdateRoleRequest $request, Role $role)
     {
         // Check if it's a protected role before allowing name/code changes
-        $protectedRoles = ['admin', 'patient', 'doctor', 'guest'];
+        $protectedRoles = ['admin', 'patient', 'doctor', 'receptionist', 'nurse'];
         
         if (in_array($role->code, $protectedRoles) && 
             (isset($request->name) || isset($request->code))) {
