@@ -1,6 +1,5 @@
 <?php
 
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -15,7 +14,8 @@ return new class extends Migration
         Schema::create('ai_analyses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('patient_id')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('patient_id')->nullable();
+
             $table->foreignId('ai_model_id')->constrained()->onDelete('cascade');
             $table->string('condition_type');
             $table->string('image_path')->nullable();
@@ -24,6 +24,12 @@ return new class extends Migration
             $table->json('report_data')->nullable();
             $table->text('summary')->nullable();
             $table->timestamps();
+
+            // Add the foreign key constraint to users table
+            $table->foreign('patient_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('set null');
         });
     }
 
