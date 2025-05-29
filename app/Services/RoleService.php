@@ -110,8 +110,7 @@ class RoleService
         $role = $this->getRoleById($id);
 
         // Check if role is protected
-        $protectedRoles = ['admin', 'patient', 'doctor', 'guest'];
-
+        $protectedRoles = ['admin', 'patient', 'doctor', 'receptionist', 'nurse'];
         if (in_array($role->code, $protectedRoles)) {
             return false;
         }
