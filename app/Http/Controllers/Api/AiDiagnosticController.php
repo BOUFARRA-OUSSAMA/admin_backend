@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Auth;
 
 class AiDiagnosticController extends Controller
 {
@@ -129,7 +130,7 @@ public function analyzeImage(Request $request)
     } catch (\Exception $e) {
         Log::error('AI image analysis failed', [
             'error' => $e->getMessage(),
-            'user_id' => auth()->id()
+            'user_id' => Auth::id() 
         ]);
         return $this->error('Failed to analyze image: ' . $e->getMessage(), 500);
     }

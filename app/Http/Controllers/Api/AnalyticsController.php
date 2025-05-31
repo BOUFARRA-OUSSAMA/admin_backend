@@ -12,6 +12,9 @@ use App\Traits\ApiResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use App\Services\FinancialAnalyticsService; 
+use App\Http\Requests\Analytics\RevenueAnalyticsRequest; 
+use App\Http\Requests\Analytics\DateRangeRequest;
 
 class AnalyticsController extends Controller
 {
@@ -448,6 +451,50 @@ class AnalyticsController extends Controller
         return response()->json([
             'success' => true,
             'data' => $data
+        ]);
+    }
+
+    public function getRevenueAnalytics(RevenueAnalyticsRequest $request, FinancialAnalyticsService $service)
+    {
+        $data = $service->getRevenueAnalytics(
+            $request['timeframe'] ?? 'monthly',
+            $request['from_date'] ?? null,
+            $request['to_date'] ?? null
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
+        ]);
+    }
+
+    public function getServiceAnalytics(DateRangeRequest $request, FinancialAnalyticsService $service)
+    {
+        $toDate = isset($request['to_date']) ? Carbon::parse($request['to_date']) : Carbon::now();
+        $fromDate = isset($request['from_date']) ? Carbon::parse($request['from_date']) : $toDate->copy()->subMonths(6);
+
+        $serviceBreakdown = $service->getServiceAnalytics($fromDate, $toDate);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'service_breakdown' => $serviceBreakdown
+            ]
+        ]);
+    }
+
+    public function getDoctorRevenueAnalytics(DateRangeRequest $request, FinancialAnalyticsService $service)
+    {
+        $toDate = isset($request['to_date']) ? Carbon::parse($request['to_date']) : Carbon::now();
+        $fromDate = isset($request['from_date']) ? Carbon::parse($request['from_date']) : $toDate->copy()->subMonths(6);
+
+        $doctorRevenueData = $service->getDoctorRevenueAnalytics($fromDate, $toDate);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'doctor_revenue' => $doctorRevenueData
+            ]
         ]);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Repositories\Eloquent;
 use App\Models\Bill;
 use App\Repositories\Interfaces\BillRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class BillRepository implements BillRepositoryInterface
 {
@@ -192,5 +193,77 @@ class BillRepository implements BillRepositoryInterface
         }
         
         return $prefix . $year . $month . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Get bills within a specific date range
+     *
+     * @param \Carbon\Carbon $fromDate
+     * @param \Carbon\Carbon $toDate
+     * @return \Illuminate\Support\Collection
+     */
+    public function getBillsByDateRange(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate): \Illuminate\Support\Collection
+    {
+        return $this->model->whereBetween('issue_date', [
+            $fromDate->toDateString(), 
+            $toDate->toDateString()
+        ])->get();
+    }
+
+    /**
+     * Get total revenue from all bills
+     *
+     * @return float
+     */
+    public function getTotalRevenue(): float
+    {
+        return $this->model->sum('amount');
+    }
+
+    /**
+     * Get service analytics data
+     *
+     * @param \Carbon\Carbon $fromDate
+     * @param \Carbon\Carbon $toDate
+     * @return \Illuminate\Support\Collection
+     */
+    public function getServiceAnalytics(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate): \Illuminate\Support\Collection
+    {
+        return DB::table('bill_items')
+            ->join('bills', 'bill_items.bill_id', '=', 'bills.id')
+            ->whereBetween('bills.issue_date', [$fromDate->toDateString(), $toDate->toDateString()])
+            ->select(
+                'bill_items.service_type',
+                DB::raw('COUNT(*) as count'),
+                DB::raw('SUM(bill_items.total) as total_revenue'),
+                DB::raw('AVG(bill_items.price) as average_price')
+            )
+            ->groupBy('bill_items.service_type')
+            ->orderBy('total_revenue', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get doctor revenue analytics data
+     *
+     * @param \Carbon\Carbon $fromDate
+     * @param \Carbon\Carbon $toDate
+     * @return \Illuminate\Support\Collection
+     */
+    public function getDoctorRevenueAnalytics(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate): \Illuminate\Support\Collection
+    {
+        return DB::table('bills')
+            ->join('users', 'bills.doctor_user_id', '=', 'users.id')
+            ->whereBetween('bills.issue_date', [$fromDate->toDateString(), $toDate->toDateString()])
+            ->select(
+                'bills.doctor_user_id as doctor_id',
+                'users.name as doctor_name',
+                DB::raw('SUM(bills.amount) as total_revenue'),
+                DB::raw('COUNT(bills.id) as bill_count')
+            )
+            ->groupBy('bills.doctor_user_id', 'users.name')
+            ->having(DB::raw('COUNT(bills.id)'), '>', 0) // Fixed: Use raw expression instead of alias
+            ->orderBy('total_revenue', 'desc')
+            ->get();
     }
 }

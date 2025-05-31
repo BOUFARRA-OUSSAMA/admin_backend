@@ -88,6 +88,11 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/active-sessions', [AnalyticsController::class, 'getCurrentActiveSessions'])
             ->middleware('jwt.auth')
             ->middleware('permission:analytics:view');
+
+        // New financial analytics routes
+        Route::get('analytics/revenue', [AnalyticsController::class, 'getRevenueAnalytics']);
+        Route::get('analytics/services', [AnalyticsController::class, 'getServiceAnalytics']);
+        Route::get('analytics/doctor-revenue', [AnalyticsController::class, 'getDoctorRevenueAnalytics']);
     });
 
     // Bill routes for receptionists/staff

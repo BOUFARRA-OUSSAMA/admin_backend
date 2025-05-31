@@ -68,4 +68,38 @@ interface BillRepositoryInterface
      * @return string
      */
     public function generateBillNumber(): string;
+
+    /**
+     * Get bills within a specific date range
+     *
+     * @param \Carbon\Carbon $fromDate
+     * @param \Carbon\Carbon $toDate
+     * @return \Illuminate\Support\Collection
+     */
+    public function getBillsByDateRange(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate): \Illuminate\Support\Collection;
+
+    /**
+     * Get total revenue from all bills
+     *
+     * @return float
+     */
+    public function getTotalRevenue(): float;
+
+    /**
+     * Get service analytics data
+     *
+     * @param \Carbon\Carbon $fromDate
+     * @param \Carbon\Carbon $toDate
+     * @return \Illuminate\Support\Collection
+     */
+    public function getServiceAnalytics(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate): \Illuminate\Support\Collection;
+
+    /**
+     * Get doctor revenue analytics data
+     *
+     * @param \Carbon\Carbon $fromDate
+     * @param \Carbon\Carbon $toDate
+     * @return \Illuminate\Support\Collection
+     */
+    public function getDoctorRevenueAnalytics(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate): \Illuminate\Support\Collection;
 }
