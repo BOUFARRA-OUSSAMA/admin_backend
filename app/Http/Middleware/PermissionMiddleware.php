@@ -25,6 +25,11 @@ class PermissionMiddleware
             // Get the authenticated user using JWTAuth
             $user = JWTAuth::parseToken()->authenticate();
             
+            // Admin role has all permissions automatically
+            if ($user->roles->where('code', 'admin')->count() > 0) {
+                return $next($request);
+            }
+            
             if (!$user) {
                 return response()->json([
                     'success' => false,

@@ -9,6 +9,8 @@ use App\Services\AnalyticsService;
 use App\Services\JwtTokenService;
 use Illuminate\Console\Scheduling\Schedule;
 use App\Console\Commands\CleanupExpiredTokens;
+use App\Models\Permission;
+use App\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -54,6 +56,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
             $schedule->command('jwt:cleanup-tokens')->daily();
+        });
+
+        // Whenever a new permission is created, assign it to admin
+        Permission::created(function ($permission) {
+            $adminRole = Role::where('code', 'admin')->first();
+            if ($adminRole) {
+                $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
+            }
         });
     }
 }

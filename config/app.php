@@ -160,6 +160,7 @@ return [
 
         App\Providers\RepositoryServiceProvider::class,
         Stevebauman\Location\LocationServiceProvider::class,
+
     ],
 
     'aliases' => [
