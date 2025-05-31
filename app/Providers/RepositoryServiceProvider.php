@@ -14,7 +14,10 @@ use App\Repositories\Eloquent\UserRepository;
 use App\Repositories\Eloquent\PatientRepository;
 use App\Repositories\Interfaces\AiAnalysisRepositoryInterface;
 use App\Repositories\Eloquent\AiAnalysisRepository;
-
+use App\Repositories\Interfaces\BillRepositoryInterface;
+use App\Repositories\Eloquent\BillRepository;
+use App\Repositories\Interfaces\BillItemRepositoryInterface;
+use App\Repositories\Eloquent\BillItemRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -32,6 +35,8 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(PermissionRepositoryInterface::class, PermissionRepository::class);
         $this->app->bind(ActivityLogRepositoryInterface::class, ActivityLogRepository::class);
         $this->app->bind(AiAnalysisRepositoryInterface::class, AiAnalysisRepository::class);
+        $this->app->bind(BillRepositoryInterface::class,BillRepository::class);
+        $this->app->bind(BillItemRepositoryInterface::class,BillItemRepository::class);
         // Register other repository bindings here
     }
 

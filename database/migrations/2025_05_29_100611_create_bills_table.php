@@ -14,19 +14,19 @@ return new class extends Migration
         Schema::create('bills', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained('patients')->onDelete('cascade');
-            $table->string('bill_number')->nullable()->unique();
-            $table->decimal('amount', 10, 2);
+            $table->foreignId('doctor_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('bill_number')->unique();
+            $table->decimal('amount', 10, 2)->default(0);
             $table->date('issue_date');
             $table->date('due_date')->nullable();
-            $table->string('status')->default('pending'); // pending, paid, overdue, cancelled
+            $table->string('payment_method')->nullable(); // cash, credit_card, insurance, etc.
             $table->text('description')->nullable();
-            $table->string('pdf_path')->nullable(); // Path to the PDF file
+            $table->string('pdf_path')->nullable();
             $table->foreignId('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-
-            // Add indexes for faster lookups
+            
             $table->index('patient_id');
-            $table->index('status');
+            $table->index('doctor_user_id');
             $table->index('issue_date');
         });
     }

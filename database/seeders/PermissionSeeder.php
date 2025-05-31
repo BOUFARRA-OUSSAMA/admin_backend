@@ -67,6 +67,17 @@ class PermissionSeeder extends Seeder
                 ['name' => 'View Analytics', 'code' => 'analytics:view'],
                 ['name' => 'Export Analytics', 'code' => 'analytics:export'],
             ],
+
+            // Bill Management
+            'bills' => [
+                ['name' => 'Manage Bills', 'code' => 'bills:manage'],
+                ['name' => 'View Bills', 'code' => 'bills:view'],
+                ['name' => 'Create Bills', 'code' => 'bills:create'],
+                ['name' => 'Edit Bills', 'code' => 'bills:edit'],
+                ['name' => 'Delete Bills', 'code' => 'bills:delete'],
+                ['name' => 'View Patient Bills', 'code' => 'bills:view-patient'],
+                ['name' => 'Generate Bill PDF', 'code' => 'bills:generate-pdf'],
+            ],
         ];
 
         // Create permissions
@@ -102,7 +113,9 @@ class PermissionSeeder extends Seeder
                 'patients:edit',
                 'patients:view-medical',
                 'patients:edit-medical',
-                'ai:use'
+                'ai:use',
+                'bills:view',
+                'bills:create'
             ])->pluck('id')->toArray();
 
             $doctorRole->permissions()->sync($doctorPermissions);
@@ -126,11 +139,16 @@ class PermissionSeeder extends Seeder
             $receptionistPermissions = Permission::whereIn('code', [
                 'patients:view',
                 'patients:create',
-                'patients:edit'
+                'patients:edit',
+                'bills:manage',
+                'bills:view',
+                'bills:create',
+                'bills:edit',
+                'bills:view-patient',
+                'bills:generate-pdf'
             ])->pluck('id')->toArray();
 
             $receptionistRole->permissions()->sync($receptionistPermissions);
         }
-
     }
 }

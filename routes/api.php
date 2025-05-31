@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\PatientController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AiDiagnosticController;
+use App\Http\Controllers\Api\BillController;
+use App\Http\Controllers\Api\StockController;
 
 /*
 |--------------------------------------------------------------------------
@@ -87,6 +89,32 @@ Route::group(['middleware' => ['jwt.auth']], function () {
             ->middleware('jwt.auth')
             ->middleware('permission:analytics:view');
     });
+
+    // Bill routes for receptionists/staff
+    Route::group(['middleware' => ['jwt.auth', 'permission:bills:manage']], function () {
+        Route::apiResource('bills', BillController::class);
+        Route::get('bills/{bill}/items', [BillController::class, 'getItems']);
+        Route::post('bills/{bill}/items', [BillController::class, 'addItem']);
+        Route::put('bills/{bill}/items/{item}', [BillController::class, 'updateItem']);
+        Route::delete('bills/{bill}/items/{item}', [BillController::class, 'removeItem']);
+        Route::get('bills/by-patient/{patient}', [BillController::class, 'getPatientBills']);
+        Route::get('bills/{bill}/pdf', [BillController::class, 'downloadPdf'])->name('bills.pdf.download');
+    });
+
+    // Bill routes for patients (read-only)
+    Route::group(['middleware' => ['jwt.auth']], function () {
+        Route::get('patient/bills', [BillController::class, 'getMyBills']);
+        Route::get('patient/bills/{bill}', [BillController::class, 'viewBill']);
+    });
+
+    // Stock routes
+    // Route::group(['middleware' => ['jwt.auth', 'permission:stock:manage']], function () {
+    //     Route::apiResource('stock', StockController::class);
+    //     Route::get('stock/categories', [StockController::class, 'getCategories']);
+    //     Route::post('stock/{stock}/transactions', [StockController::class, 'addTransaction']);
+    //     Route::get('stock/{stock}/transactions', [StockController::class, 'getTransactions']);
+    //     Route::get('stock/low-inventory', [StockController::class, 'getLowInventory']);
+    // });
 });
 
 // AI Diagnostic routes 

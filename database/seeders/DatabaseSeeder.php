@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             AiModelSeeder::class,
             ActivityLogSeeder::class,
+            BillSeeder::class,
         ]);
     }
 }
