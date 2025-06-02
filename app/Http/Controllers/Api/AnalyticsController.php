@@ -426,11 +426,6 @@ class AnalyticsController extends Controller
     }
 
     /**
-     * Get current active sessions for JWT authenticated users.
-     *
-     * @return array
-     */
-    /**
      * Get current active user sessions.
      *
      * @param Request $request
@@ -454,6 +449,13 @@ class AnalyticsController extends Controller
         ]);
     }
 
+    /**
+     * Get revenue analytics with specified timeframe
+     * 
+     * @param RevenueAnalyticsRequest $request
+     * @param FinancialAnalyticsService $service
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getRevenueAnalytics(RevenueAnalyticsRequest $request, FinancialAnalyticsService $service)
     {
         $data = $service->getRevenueAnalytics(
@@ -461,20 +463,34 @@ class AnalyticsController extends Controller
             $request['from_date'] ?? null,
             $request['to_date'] ?? null
         );
-
+        
         return response()->json([
             'success' => true,
-            'data' => $data
+            'data' => [
+                'total_revenue' => $data['revenue_metrics']['total_revenue'],
+                'period_revenue' => $data['revenue_metrics']['period_revenue'],
+                'growth_rate' => $data['revenue_metrics']['growth_rate'],
+                'average_bill_amount' => $data['revenue_metrics']['average_bill_amount'],
+                'bill_count' => $data['revenue_metrics']['bill_count'],
+                'revenue_by_period' => $data['revenue_by_period']
+            ]
         ]);
     }
 
+    /**
+     * Get service type analytics
+     * 
+     * @param DateRangeRequest $request
+     * @param FinancialAnalyticsService $service
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getServiceAnalytics(DateRangeRequest $request, FinancialAnalyticsService $service)
     {
         $toDate = isset($request['to_date']) ? Carbon::parse($request['to_date']) : Carbon::now();
         $fromDate = isset($request['from_date']) ? Carbon::parse($request['from_date']) : $toDate->copy()->subMonths(6);
 
         $serviceBreakdown = $service->getServiceAnalytics($fromDate, $toDate);
-
+        
         return response()->json([
             'success' => true,
             'data' => [
@@ -483,6 +499,13 @@ class AnalyticsController extends Controller
         ]);
     }
 
+    /**
+     * Get doctor revenue analytics
+     * 
+     * @param DateRangeRequest $request
+     * @param FinancialAnalyticsService $service
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function getDoctorRevenueAnalytics(DateRangeRequest $request, FinancialAnalyticsService $service)
     {
         $toDate = isset($request['to_date']) ? Carbon::parse($request['to_date']) : Carbon::now();

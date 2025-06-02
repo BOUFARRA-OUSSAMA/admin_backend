@@ -20,7 +20,6 @@ class BillItemResource extends JsonResource
             'service_type' => $this->service_type,
             'description' => $this->description,
             'price' => (float) $this->price,
-            'quantity' => (int) $this->quantity,
             'total' => (float) $this->total,
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),

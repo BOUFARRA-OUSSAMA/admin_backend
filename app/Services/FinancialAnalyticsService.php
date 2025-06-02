@@ -55,7 +55,6 @@ class FinancialAnalyticsService
         
         // Calculate other metrics
         $averageBillAmount = $this->calculateAverageBillAmount($bills);
-        $outstandingAmount = $this->calculateOutstandingAmount($bills);
         
         // Generate period data
         $revenueByPeriod = $this->generateRevenueByPeriod($bills, $fromDate, $toDate, $normalizedTimeframe);
@@ -67,7 +66,7 @@ class FinancialAnalyticsService
                 'previous_period_revenue' => $previousPeriodRevenue,
                 'growth_rate' => round($growthRate, 2),
                 'average_bill_amount' => round($averageBillAmount, 2),
-                'outstanding_amount' => $outstandingAmount,
+                'bill_count' => $bills->count(),
             ],
             'revenue_by_period' => $revenueByPeriod
         ];
@@ -76,52 +75,40 @@ class FinancialAnalyticsService
     /**
      * Get service type analytics data
      * 
-     * @param string|null $fromDate
-     * @param string|null $toDate
-     * @return array
+     * @param Carbon $fromDate
+     * @param Carbon $toDate
+     * @return Collection
      */
-    public function getServiceAnalytics(?string $fromDate = null, ?string $toDate = null): array
+    public function getServiceAnalytics(Carbon $fromDate, Carbon $toDate): Collection
     {
-        // Set default date range if not provided
-        $toDate = $toDate ? Carbon::parse($toDate) : Carbon::now();
-        $fromDate = $fromDate ? Carbon::parse($fromDate) : $toDate->copy()->subMonths(6);
-        
         // Get service analytics data
         $servicesData = $this->billRepository->getServiceAnalytics($fromDate, $toDate);
         
-        // Format the response
-        $serviceBreakdown = $servicesData->map(function ($item) {
+        // Format the response - keep average_price as requested
+        return $servicesData->map(function ($item) {
             return [
                 'service_type' => $item->service_type,
                 'count' => $item->count,
                 'total_revenue' => round($item->total_revenue, 2),
-                'average_price' => round($item->average_price, 2)
+                'average_price' => round($item->average_price, 2) // Add this back
             ];
         });
-        
-        return [
-            'service_breakdown' => $serviceBreakdown
-        ];
     }
 
     /**
      * Get doctor revenue analytics data
      * 
-     * @param string|null $fromDate
-     * @param string|null $toDate
-     * @return array
+     * @param Carbon $fromDate
+     * @param Carbon $toDate
+     * @return Collection
      */
-    public function getDoctorRevenueAnalytics(?string $fromDate = null, ?string $toDate = null): array
+    public function getDoctorRevenueAnalytics(Carbon $fromDate, Carbon $toDate): Collection
     {
-        // Set default date range if not provided
-        $toDate = $toDate ? Carbon::parse($toDate) : Carbon::now();
-        $fromDate = $fromDate ? Carbon::parse($fromDate) : $toDate->copy()->subMonths(6);
-        
         // Get doctor revenue data
         $doctorRevenueData = $this->billRepository->getDoctorRevenueAnalytics($fromDate, $toDate);
         
         // Calculate average bill amount and format the response
-        $formattedDoctorData = $doctorRevenueData->map(function ($item) {
+        return $doctorRevenueData->map(function ($item) {
             $averageBillAmount = $item->bill_count > 0 ? $item->total_revenue / $item->bill_count : 0;
             
             return [
@@ -132,14 +119,15 @@ class FinancialAnalyticsService
                 'average_bill_amount' => round($averageBillAmount, 2)
             ];
         });
-        
-        return [
-            'doctor_revenue' => $formattedDoctorData
-        ];
     }
     
-    // Additional methods for the other analytics functionality...
-    
+    /**
+     * Calculate growth rate between current and previous period
+     * 
+     * @param float $currentValue
+     * @param float $previousValue
+     * @return float
+     */
     private function calculateGrowthRate($currentValue, $previousValue): float
     {
         if ($previousValue <= 0) {
@@ -149,18 +137,26 @@ class FinancialAnalyticsService
         return (($currentValue - $previousValue) / $previousValue) * 100;
     }
     
+    /**
+     * Calculate average bill amount
+     * 
+     * @param Collection $bills
+     * @return float
+     */
     private function calculateAverageBillAmount(Collection $bills): float
     {
         return $bills->count() > 0 ? $bills->sum('amount') / $bills->count() : 0;
     }
     
-    private function calculateOutstandingAmount(Collection $bills): float
-    {
-        return $bills->filter(function ($bill) {
-            return empty($bill->payment_method);
-        })->sum('amount');
-    }
-    
+    /**
+     * Generate revenue breakdown by time period
+     * 
+     * @param Collection $bills
+     * @param Carbon $fromDate
+     * @param Carbon $toDate
+     * @param string $timeframe
+     * @return array
+     */
     private function generateRevenueByPeriod(Collection $bills, Carbon $fromDate, Carbon $toDate, string $timeframe): array
     {
         // Time formatting logic
@@ -196,6 +192,12 @@ class FinancialAnalyticsService
         return $result;
     }
     
+    /**
+     * Get date format based on timeframe
+     * 
+     * @param string $timeframe
+     * @return string
+     */
     private function getTimeFormat(string $timeframe): string
     {
         switch ($timeframe) {
@@ -207,6 +209,12 @@ class FinancialAnalyticsService
         }
     }
     
+    /**
+     * Get time interval based on timeframe
+     * 
+     * @param string $timeframe
+     * @return string
+     */
     private function getTimeInterval(string $timeframe): string
     {
         switch ($timeframe) {

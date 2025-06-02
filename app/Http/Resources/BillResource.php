@@ -34,7 +34,6 @@ class BillResource extends JsonResource
             }),
             'amount' => (float) $this->amount,
             'issue_date' => $this->issue_date->format('Y-m-d'),
-            'due_date' => $this->due_date ? $this->due_date->format('Y-m-d') : null,
             'payment_method' => $this->payment_method,
             'description' => $this->description,
             'pdf_path' => $this->when($this->pdf_path, function () {

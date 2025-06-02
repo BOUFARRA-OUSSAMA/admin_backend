@@ -94,16 +94,15 @@ class BillService
                 $totalAmount = 0;
                 
                 foreach ($data['items'] as $itemData) {
-                    $total = $itemData['price'] * $itemData['quantity'];
-                    $totalAmount += $total;
+                    // Price is directly the total (no quantity needed)
+                    $totalAmount += $itemData['price'];
                     
                     $this->billItemRepository->create([
                         'bill_id' => $bill->id,
                         'service_type' => $itemData['service_type'],
                         'description' => $itemData['description'] ?? null,
                         'price' => $itemData['price'],
-                        'quantity' => $itemData['quantity'],
-                        'total' => $total,
+                        'total' => $itemData['price']
                     ]);
                 }
                 
@@ -144,7 +143,6 @@ class BillService
                 'doctor_user_id',
                 'bill_number',
                 'issue_date',
-                'due_date',
                 'payment_method',
                 'description'
             ]));
@@ -162,16 +160,15 @@ class BillService
                 
                 // Create new items
                 foreach ($data['items'] as $itemData) {
-                    $total = $itemData['price'] * $itemData['quantity'];
-                    $totalAmount += $total;
+                    // Price is directly the total (no quantity needed)
+                    $totalAmount += $itemData['price'];
                     
                     $this->billItemRepository->create([
                         'bill_id' => $bill->id,
                         'service_type' => $itemData['service_type'],
                         'description' => $itemData['description'] ?? null,
                         'price' => $itemData['price'],
-                        'quantity' => $itemData['quantity'],
-                        'total' => $total,
+                        'total' => $itemData['price']
                     ]);
                 }
                 
@@ -240,16 +237,16 @@ class BillService
     public function addBillItem(Bill $bill, array $itemData): BillItem
     {
         return DB::transaction(function () use ($bill, $itemData) {
-            $total = $itemData['price'] * $itemData['quantity'];
+            // Price is directly the total (no quantity needed)
+            $price = $itemData['price'];
             
             // Create the item
             $item = $this->billItemRepository->create([
                 'bill_id' => $bill->id,
                 'service_type' => $itemData['service_type'],
                 'description' => $itemData['description'] ?? null,
-                'price' => $itemData['price'],
-                'quantity' => $itemData['quantity'],
-                'total' => $total,
+                'price' => $price,
+                'total' => $price
             ]);
             
             // Update the bill total amount
@@ -288,14 +285,11 @@ class BillService
         
         return DB::transaction(function () use ($bill, $item, $itemData) {
             $price = $itemData['price'] ?? $item->price;
-            $quantity = $itemData['quantity'] ?? $item->quantity;
-            $total = $price * $quantity;
             
-            // Update data to include the calculated total
+            // Update data - price and total are the same (no quantity)
             $updateData = array_merge($itemData, [
                 'price' => $price,
-                'quantity' => $quantity,
-                'total' => $total
+                'total' => $price
             ]);
             
             // Update the item

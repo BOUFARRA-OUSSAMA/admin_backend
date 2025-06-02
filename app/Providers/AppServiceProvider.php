@@ -11,6 +11,9 @@ use Illuminate\Console\Scheduling\Schedule;
 use App\Console\Commands\CleanupExpiredTokens;
 use App\Models\Permission;
 use App\Models\Role;
+use Illuminate\Database\Connectors\PostgresConnector;
+use Illuminate\Support\Facades\Log;
+use PDO;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -40,6 +43,29 @@ class AppServiceProvider extends ServiceProvider
         $this->commands([
             'command.jwt.cleanup',
         ]);
+        
+        // Custom PostgreSQL connector for Neon
+        $this->app->singleton('db.connector.pgsql', function () {
+            return new class extends PostgresConnector {
+                public function connect(array $config)
+                {
+                    // Get the default options
+                    $options = $this->getOptions($config);
+                    
+                    // Build the DSN string
+                    $dsn = $this->getDsn($config);
+                    
+                    // Add Neon endpoint if specified
+                    if (!empty($config['options']['endpoint'])) {
+                        $endpoint = $config['options']['endpoint'];
+                        $dsn .= ";options=endpoint=" . $endpoint;
+                    }
+                    
+                    // Create and return the connection
+                    return $this->createConnection($dsn, $config, $options);
+                }
+            };
+        });
     }
 
     /**
@@ -64,6 +90,45 @@ class AppServiceProvider extends ServiceProvider
             if ($adminRole) {
                 $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
             }
+        });
+
+        // Add retry logic to handle connection issues (important for serverless DBs on Azure)
+        $this->app->extend('db.connector.pgsql', function ($connector, $app) {
+            return new class($connector) {
+                protected $connector;
+                
+                public function __construct($connector) {
+                    $this->connector = $connector;
+                }
+                
+                public function connect(array $config) {
+                    $maxAttempts = 3;
+                    $attempt = 0;
+                    $lastException = null;
+                    
+                    while ($attempt < $maxAttempts) {
+                        try {
+                            return $this->connector->connect($config);
+                        } catch (\Exception $e) {
+                            $lastException = $e;
+                            $attempt++;
+                            if ($attempt >= $maxAttempts) {
+                                break;
+                            }
+                            // Exponential backoff - helps with Azure serverless cold starts
+                            sleep(pow(2, $attempt - 1)); 
+                        }
+                    }
+                    // Log additional diagnostic info for Azure
+                    Log::error("Azure DB Connection failed after {$maxAttempts} attempts", [
+                        'host' => $config['host'] ?? 'unknown',
+                        'error' => $lastException ? $lastException->getMessage() : 'unknown error',
+                        'error_code' => $lastException instanceof \PDOException ? $lastException->getCode() : 'N/A'
+                    ]);
+                    
+                    throw $lastException;
+                }
+            };
         });
     }
 }
