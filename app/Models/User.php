@@ -136,4 +136,10 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasRole('patient');
     }
+
+
+    public function doctorProfile()
+{
+    return $this->hasOne(Doctor::class);
+}
 }
