@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AiDiagnosticController;
 use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\StockController;
-
+use App\Http\Controllers\Api\AppointmentHistoryController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -106,11 +106,19 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('bills/{bill}/pdf', [BillController::class, 'downloadPdf'])->name('bills.pdf.download');
     });
 
-    // Bill routes for patients (read-only)
-    Route::group(['middleware' => ['jwt.auth']], function () {
-        Route::get('patient/bills', [BillController::class, 'getMyBills']);
-        Route::get('patient/bills/{bill}', [BillController::class, 'viewBill']);
-    });
+Route::middleware('jwt.auth')->group(function () {
+   // Historique des rendez-vous
+    Route::get('patient/appointments', [AppointmentHistoryController::class, 'index']);
+    
+    // Tous les rendez-vous avec filtres optionnels
+    Route::get('patient/appointments/all', [AppointmentHistoryController::class, 'all']);
+    
+    // Détails d'un rendez-vous spécifique
+    Route::get('patient/appointments/{id}', [AppointmentHistoryController::class, 'show']);
+    
+    // Annulation d'un rendez-vous 
+    Route::post('patient/appointments/{id}/cancel', [AppointmentHistoryController::class, 'cancel']);
+});
 
     // Stock routes
     // Route::group(['middleware' => ['jwt.auth', 'permission:stock:manage']], function () {
