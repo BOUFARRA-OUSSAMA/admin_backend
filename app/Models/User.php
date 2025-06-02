@@ -1,8 +1,12 @@
 <?php
 
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany; // ✅ Add this import
+use Illuminate\Database\Eloquent\Relations\BelongsToMany; // ✅ Add this import
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -67,7 +71,7 @@ class User extends Authenticatable implements JWTSubject
     /**
      * User has many roles relationship
      */
-    public function roles()
+    public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class, 'user_role')
             ->withTimestamps();
@@ -76,7 +80,7 @@ class User extends Authenticatable implements JWTSubject
     /**
      * User has many AI models relationship
      */
-    public function aiModels()
+    public function aiModels(): BelongsToMany
     {
         return $this->belongsToMany(AiModel::class, 'user_ai_model')
             ->withTimestamps();
@@ -85,7 +89,7 @@ class User extends Authenticatable implements JWTSubject
     /**
      * User has many activity logs relationship
      */
-    public function activityLogs()
+    public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);
     }
@@ -93,7 +97,7 @@ class User extends Authenticatable implements JWTSubject
     /**
      * Check if user has specific role
      */
-    public function hasRole($role)
+    public function hasRole($role): bool
     {
         if (is_string($role)) {
             return $this->roles->where('code', $role)->count() > 0;
@@ -120,7 +124,7 @@ class User extends Authenticatable implements JWTSubject
     /**
      * Check if user has specific permission
      */
-    public function hasPermission($permission)
+    public function hasPermission($permission): bool
     {
         if (is_string($permission)) {
             return $this->getAllPermissions()->where('code', $permission)->count() > 0;
@@ -132,8 +136,80 @@ class User extends Authenticatable implements JWTSubject
     /**
      * Check if user is patient
      */
-    public function isPatient()
+    public function isPatient(): bool
     {
         return $this->hasRole('patient');
+    }
+
+    /**
+     * Check if user is doctor
+     */
+    public function isDoctor(): bool
+    {
+        return $this->hasRole('doctor');
+    }
+
+    /**
+     * Check if user is receptionist
+     */
+    public function isReceptionist(): bool
+    {
+        return $this->hasRole('receptionist');
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    /**
+     * Get the patient profile for this user.
+     */
+    public function patient(): HasOne
+    {
+        return $this->hasOne(Patient::class);
+    }
+
+    /**
+     * Get the doctor profile for this user.
+     */
+    public function doctor(): HasOne
+    {
+        return $this->hasOne(Doctor::class);
+    }
+
+    /**
+     * ✅ DIRECT: Patient appointments relationship
+     */
+    public function patientAppointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'patient_user_id');
+    }
+
+    /**
+     * ✅ DIRECT: Doctor appointments relationship
+     */
+    public function doctorAppointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'doctor_user_id');
+    }
+
+    /**
+     * ✅ SIMPLIFIED: Get appointments based on user role
+     */
+    public function getAppointmentsAttribute()
+    {
+        if ($this->isPatient()) {
+            return $this->patientAppointments;
+        }
+        
+        if ($this->isDoctor()) {
+            return $this->doctorAppointments;
+        }
+        
+        return collect();
     }
 }

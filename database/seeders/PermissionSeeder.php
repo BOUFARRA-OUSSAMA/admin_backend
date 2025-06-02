@@ -78,6 +78,17 @@ class PermissionSeeder extends Seeder
                 ['name' => 'View Patient Bills', 'code' => 'bills:view-patient'],
                 ['name' => 'Generate Bill PDF', 'code' => 'bills:generate-pdf'],
             ],
+
+                // APPOINTMENT PERMISSIONS:
+            'appointments' => [
+                ['name' => 'View Appointments', 'code' => 'appointments:view'],
+                ['name' => 'Create Appointments', 'code' => 'appointments:create'],
+                ['name' => 'Edit Appointments', 'code' => 'appointments:edit'],
+                ['name' => 'Delete Appointments', 'code' => 'appointments:delete'],
+                ['name' => 'Manage All Appointments', 'code' => 'manage_appointments'],
+                ['name' => 'Confirm Appointments', 'code' => 'appointments:confirm'],
+                ['name' => 'Complete Appointments', 'code' => 'appointments:complete'],
+            ],
         ];
 
         // Create permissions

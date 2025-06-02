@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->date('registration_date')->nullable();
             $table->timestamps();
-
+            $table->softDeletes(); 
             // Add index for faster lookups
             $table->index('user_id');
         });

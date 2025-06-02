@@ -6,32 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('blocked_time_slots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('doctor_user_id')->constrained('users')->onDelete('cascade');
-            $table->date('date');
-            $table->time('start_time');
-            $table->time('end_time');
+            $table->dateTime('start_datetime'); 
+            $table->dateTime('end_datetime'); 
             $table->string('reason')->nullable();
-            $table->string('recurrence_pattern')->nullable(); // null, daily, weekly, monthly
-            $table->date('recurrence_end_date')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->string('block_type')->default('personal'); 
+            $table->boolean('is_recurring')->default(false); 
+            $table->string('recurring_pattern')->nullable(); 
+            $table->date('recurring_end_date')->nullable();
             $table->foreignId('created_by_user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->text('notes')->nullable(); 
             $table->timestamps();
+            $table->softDeletes(); 
 
-            $table->index(['doctor_user_id', 'date']);
-            $table->index('is_active');
+            $table->index(['doctor_user_id', 'start_datetime']);
+            $table->index('block_type');
+            $table->index('is_recurring');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('blocked_time_slots');
