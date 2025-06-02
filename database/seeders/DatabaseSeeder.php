@@ -2,7 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Appointment;
+use App\Models\TimeSlot;
 use Illuminate\Database\Seeder;
+use Ramsey\Uuid\Type\Time;
 
 class DatabaseSeeder extends Seeder
 {
@@ -20,6 +23,8 @@ class DatabaseSeeder extends Seeder
             AiModelSeeder::class,
             ActivityLogSeeder::class,
             BillSeeder::class,
+            TimeSlotSeeder::class,  
+            AppointmentSeeder::class,
         ]);
     }
 }
