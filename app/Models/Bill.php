@@ -15,7 +15,6 @@ class Bill extends Model
         'bill_number',
         'amount',
         'issue_date',
-        'due_date',
         'payment_method',
         'description',
         'pdf_path',
@@ -24,7 +23,6 @@ class Bill extends Model
 
     protected $casts = [
         'issue_date' => 'date',
-        'due_date' => 'date',
         'amount' => 'decimal:2',
     ];
 

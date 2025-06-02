@@ -18,7 +18,6 @@ return new class extends Migration
             $table->string('bill_number')->unique();
             $table->decimal('amount', 10, 2)->default(0);
             $table->date('issue_date');
-            $table->date('due_date')->nullable();
             $table->string('payment_method')->nullable(); // cash, credit_card, insurance, etc.
             $table->text('description')->nullable();
             $table->string('pdf_path')->nullable();
