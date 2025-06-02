@@ -14,20 +14,24 @@ return new class extends Migration
         Schema::create('personal_infos', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained('patients')->onDelete('cascade');
-            $table->string('surname')->nullable();
+            
+           
+            $table->string('name');
+            $table->string('surname');
             $table->date('birthdate')->nullable();
-            $table->string('gender')->nullable();
+            $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->text('address')->nullable();
-            $table->string('emergency_contact_name')->nullable();
-            $table->string('emergency_contact_phone')->nullable();
+            $table->string('emergency_contact')->nullable();
             $table->string('marital_status')->nullable();
-            $table->string('blood_type')->nullable();
+            $table->string('blood_type', 5)->nullable();
             $table->string('nationality')->nullable();
             $table->string('profile_image')->nullable();
+            
             $table->timestamps();
-
-            // Add index for faster lookups
+            
+            // Add indexes
             $table->index('patient_id');
+            $table->index(['name', 'surname']);
         });
     }
 

@@ -11,16 +11,14 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AiDiagnosticController;
 use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\StockController;
+use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\PatientAppointmentController;
+use App\Http\Controllers\Api\DoctorAppointmentController;
 
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
 
 Route::group(['prefix' => 'auth'], function () {
@@ -82,7 +80,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/activities', [AnalyticsController::class, 'getActivityStats']);
         Route::get('analytics/user-activity', [AnalyticsController::class, 'getUserActivityStats']);
         Route::get('analytics/logins', [AnalyticsController::class, 'getLoginStats']);
-        Route::get('analytics/user-registrations', [AnalyticsController::class, 'getUserRegistrations']); // Add this line
+        Route::get('analytics/user-registrations', [AnalyticsController::class, 'getUserRegistrations']);
         // Security analytics route
         Route::get('analytics/export/{type}', [AnalyticsController::class, 'exportData']);
         Route::get('analytics/active-sessions', [AnalyticsController::class, 'getCurrentActiveSessions'])
@@ -112,14 +110,83 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('patient/bills/{bill}', [BillController::class, 'viewBill']);
     });
 
-    // Stock routes
-    // Route::group(['middleware' => ['jwt.auth', 'permission:stock:manage']], function () {
-    //     Route::apiResource('stock', StockController::class);
-    //     Route::get('stock/categories', [StockController::class, 'getCategories']);
-    //     Route::post('stock/{stock}/transactions', [StockController::class, 'addTransaction']);
-    //     Route::get('stock/{stock}/transactions', [StockController::class, 'getTransactions']);
-    //     Route::get('stock/low-inventory', [StockController::class, 'getLowInventory']);
-    // });
+    // APPOINTMENT MANAGEMENT ROUTES
+    
+    // ADMIN/RECEPTIONIST APPOINTMENT ROUTES - Updated permissions
+    Route::prefix('appointments')->middleware(['permission:appointments:manage'])->group(function () {
+        Route::get('/', [AppointmentController::class, 'index']);                    // GET /api/appointments
+        Route::post('/', [AppointmentController::class, 'store']);                   // POST /api/appointments
+        Route::get('/{id}', [AppointmentController::class, 'show']);                 // GET /api/appointments/{id}
+        Route::put('/{id}', [AppointmentController::class, 'update']);               // PUT /api/appointments/{id}
+        Route::delete('/{id}', [AppointmentController::class, 'destroy']);           // DELETE /api/appointments/{id}
+        
+        // Appointment actions
+        Route::post('/{id}/cancel', [AppointmentController::class, 'cancel']);       // POST /api/appointments/{id}/cancel
+        Route::post('/{id}/confirm', [AppointmentController::class, 'confirm']);     // POST /api/appointments/{id}/confirm
+        Route::post('/{id}/complete', [AppointmentController::class, 'complete']);   // POST /api/appointments/{id}/complete
+        Route::post('/{id}/reschedule', [AppointmentController::class, 'reschedule']); // ✅ ADD THIS
+    
+        // Available slots
+        Route::get('/slots/available', [AppointmentController::class, 'availableSlots']); // GET /api/appointments/slots/available
+    });
+
+    // PATIENT APPOINTMENT ROUTES - No middleware (service handles validation)
+    Route::prefix('patient/appointments')->group(function () {
+        Route::get('/', [PatientAppointmentController::class, 'index']);             // GET /api/patient/appointments
+        Route::post('/', [PatientAppointmentController::class, 'store']);            // POST /api/patient/appointments
+        
+        // Patient-specific endpoints
+        Route::get('/upcoming', [PatientAppointmentController::class, 'upcoming']); // GET /api/patient/appointments/upcoming
+        Route::get('/today', [PatientAppointmentController::class, 'today']);       // GET /api/patient/appointments/today
+        Route::get('/next', [PatientAppointmentController::class, 'next']);         // GET /api/patient/appointments/next
+        Route::get('/history', [PatientAppointmentController::class, 'history']);   // GET /api/patient/appointments/history
+        Route::get('/stats', [PatientAppointmentController::class, 'stats']);       // GET /api/patient/appointments/stats
+        
+        // Patient actions
+        Route::post('/{id}/cancel', [PatientAppointmentController::class, 'cancel']);       // POST /api/patient/appointments/{id}/cancel
+        Route::post('/{id}/reschedule', [PatientAppointmentController::class, 'reschedule']); // POST /api/patient/appointments/{id}/reschedule
+        
+        // Available resources for booking
+        Route::get('/doctors/available', [PatientAppointmentController::class, 'availableDoctors']); // GET /api/patient/appointments/doctors/available
+        Route::get('/slots/available', [PatientAppointmentController::class, 'availableSlots']);     // GET /api/patient/appointments/slots/available
+    });
+
+    // DOCTOR APPOINTMENT ROUTES - No middleware (service handles validation)
+    Route::prefix('doctor/appointments')->group(function () {
+        Route::get('/', [DoctorAppointmentController::class, 'index']);             // GET /api/doctor/appointments
+        
+        // Create appointments
+        Route::post('/', [DoctorAppointmentController::class, 'store']);
+        Route::post('/recurring', [DoctorAppointmentController::class, 'createRecurring']);
+
+        // Helper endpoints
+        Route::get('/patients/search', [DoctorAppointmentController::class, 'getAvailablePatients']);
+        Route::post('/check-conflicts', [DoctorAppointmentController::class, 'checkConflicts']);
+
+        // Schedule management
+        Route::get('/schedule/today', [DoctorAppointmentController::class, 'todaysSchedule']); // GET /api/doctor/appointments/schedule/today
+        Route::get('/upcoming', [DoctorAppointmentController::class, 'upcoming']);             // GET /api/doctor/appointments/upcoming
+        Route::get('/schedule/date', [DoctorAppointmentController::class, 'scheduleForDate']); // GET /api/doctor/appointments/schedule/date
+        Route::get('/availability', [DoctorAppointmentController::class, 'availability']);     // GET /api/doctor/appointments/availability
+        Route::get('/stats', [DoctorAppointmentController::class, 'stats']);                   // GET /api/doctor/appointments/stats
+        
+        // Appointment actions
+        Route::post('/{id}/confirm', [DoctorAppointmentController::class, 'confirm']);     // POST /api/doctor/appointments/{id}/confirm
+        Route::post('/{id}/complete', [DoctorAppointmentController::class, 'complete']);   // POST /api/doctor/appointments/{id}/complete
+        Route::post('/{id}/cancel', [DoctorAppointmentController::class, 'cancel']);       // POST /api/doctor/appointments/{id}/cancel
+        Route::post('/{id}/no-show', [DoctorAppointmentController::class, 'markNoShow']); // POST /api/doctor/appointments/{id}/no-show
+        Route::post('/{id}/reschedule', [DoctorAppointmentController::class, 'reschedule']); // ✅ ADD THIS
+    
+        // Time slot management
+        Route::post('/time-slots', [DoctorAppointmentController::class, 'createTimeSlots']);      // POST /api/doctor/appointments/time-slots
+        Route::post('/time-slots/block', [DoctorAppointmentController::class, 'blockTimeSlots']); // POST /api/doctor/appointments/time-slots/block
+        Route::get('/time-slots/blocked', [DoctorAppointmentController::class, 'blockedSlots']);  // GET /api/doctor/appointments/time-slots/blocked
+        Route::delete('/time-slots/blocked/{id}', [DoctorAppointmentController::class, 'unblockTimeSlot']); // DELETE /api/doctor/appointments/time-slots/blocked/{id}
+
+        //  Doctor settings endpoints
+        Route::get('/settings', [DoctorAppointmentController::class, 'getSettings']);     // GET /api/doctor/appointments/settings
+        Route::put('/settings', [DoctorAppointmentController::class, 'updateSettings']);  // PUT /api/doctor/appointments/settings
+    });
 });
 
 // AI Diagnostic routes 
@@ -127,13 +194,14 @@ Route::group(['middleware' => ['jwt.auth', 'permission:ai:use'], 'prefix' => 'ai
     Route::get('/models', [AiDiagnosticController::class, 'getAvailableModels']);
     Route::post('/analyze', [AiDiagnosticController::class, 'analyzeImage']);
 });
+
 // Patient AI Analyses routes
 Route::group(['middleware' => ['jwt.auth', 'permission:patients:view-medical']], function () {
     Route::get('/patients/{patient}/ai-analyses', [AiDiagnosticController::class, 'getPatientAnalyses']);
     Route::get('/ai-analyses/{analysis}', [AiDiagnosticController::class, 'getAnalysis']);
 });
 
-// Test route in routes/api.php
+// Test route
 Route::get('/test-middleware', function () {
     return response()->json(['success' => true, 'message' => 'Middleware is working']);
 })->middleware('permission:analytics:view');
