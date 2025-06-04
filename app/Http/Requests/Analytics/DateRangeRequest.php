@@ -26,6 +26,11 @@ class DateRangeRequest extends FormRequest
         return [
             'from_date' => 'nullable|date',
             'to_date' => 'nullable|date|after_or_equal:from_date',
+            'doctor_id' => 'nullable|integer|exists:users,id',
+            'doctor_name' => 'nullable|string|max:100',
+            'patient_id' => 'nullable|integer|exists:patients,id',
+            'payment_method' => 'nullable|string',
+            'service_type' => 'nullable|string',
         ];
     }
 }

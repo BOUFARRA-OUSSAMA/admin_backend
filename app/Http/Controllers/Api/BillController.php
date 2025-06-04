@@ -14,6 +14,7 @@ use App\Models\Bill;
 use App\Models\BillItem;
 use App\Models\Patient;
 use App\Services\BillService;
+use App\Services\DateFilterService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -27,15 +28,22 @@ class BillController extends Controller
      * @var BillService
      */
     protected $billService;
+    
+    /**
+     * @var DateFilterService
+     */
+    protected $dateFilterService;
 
     /**
      * BillController constructor.
      *
      * @param BillService $billService
+     * @param DateFilterService $dateFilterService
      */
-    public function __construct(BillService $billService)
+    public function __construct(BillService $billService, DateFilterService $dateFilterService)
     {
         $this->billService = $billService;
+        $this->dateFilterService = $dateFilterService;
     }
 
     /**
@@ -48,14 +56,21 @@ class BillController extends Controller
     {
         $filters = $request->only([
             'doctor_id',
+            'doctor_name', 
             'patient_id',
             'date_from',
             'date_to',
+            'preset_period',
             'amount_min',
             'amount_max',
+            'payment_method',
+            'service_type', 
             'sort_by',
             'sort_direction'
         ]);
+        
+        // Process date filters including preset periods
+        $filters = $this->dateFilterService->processDates($filters, $request->header('Timezone'));
         
         $perPage = $request->input('per_page', 15);
         $bills = $this->billService->getAllBills($filters, $perPage);

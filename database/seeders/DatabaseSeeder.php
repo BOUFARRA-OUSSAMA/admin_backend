@@ -25,15 +25,17 @@ class DatabaseSeeder extends Seeder
             // Users and profiles (doctors/patients)
             AppointmentTestUsersSeeder::class,
             
-            // Appointment-related data (NO TimeSlotSeeder)
-            // ✅ REMOVED: TimeSlotSeeder::class,
+            // Patient seeder BEFORE bill seeder
+            PatientSeeder::class,
+            
+            // Appointment-related data
             AppointmentSeeder::class,
             BlockedTimeSlotsSeeder::class,
             
             // Other seeders
             AiModelSeeder::class,
             ActivityLogSeeder::class,
-            BillSeeder::class,
+            BillSeeder::class,  // Now runs AFTER PatientSeeder
         ]);
     }
 }

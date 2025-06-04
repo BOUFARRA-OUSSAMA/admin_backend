@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientAppointmentController;
 use App\Http\Controllers\Api\DoctorAppointmentController;
+use App\Http\Controllers\Api\PersonalInfoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -83,32 +84,42 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('analytics/user-registrations', [AnalyticsController::class, 'getUserRegistrations']);
         // Security analytics route
         Route::get('analytics/export/{type}', [AnalyticsController::class, 'exportData']);
-        Route::get('analytics/active-sessions', [AnalyticsController::class, 'getCurrentActiveSessions'])
-            ->middleware('jwt.auth')
-            ->middleware('permission:analytics:view');
+        Route::get('analytics/active-sessions', [AnalyticsController::class, 'getCurrentActiveSessions']);
 
         // New financial analytics routes
         Route::get('analytics/revenue', [AnalyticsController::class, 'getRevenueAnalytics']);
         Route::get('analytics/services', [AnalyticsController::class, 'getServiceAnalytics']);
         Route::get('analytics/doctor-revenue', [AnalyticsController::class, 'getDoctorRevenueAnalytics']);
+
+        // Current period revenue endpoints
+        Route::get('analytics/revenue/week/current', [AnalyticsController::class, 'getCurrentWeekRevenue']);
+        Route::get('analytics/revenue/month/current', [AnalyticsController::class, 'getCurrentMonthRevenue']);
+        Route::get('analytics/revenue/year/current', [AnalyticsController::class, 'getCurrentYearRevenue']);
     });
 
-    // Bill routes for receptionists/staff
-    Route::group(['middleware' => ['jwt.auth', 'permission:bills:manage']], function () {
-        Route::apiResource('bills', BillController::class);
+    // Bill routes for receptionists/staff - REMOVE duplicate jwt.auth middleware
+    Route::group(['middleware' => 'permission:bills:manage'], function () {
+        // Move this specific route BEFORE the resource route
+        Route::get('bills/by-patient/{patient}', [BillController::class, 'getPatientBills']);
+        
+        // Then the resource route
+        Route::get('bills', [BillController::class, 'index']);
+        Route::post('bills', [BillController::class, 'store']);
+        Route::get('bills/{bill}', [BillController::class, 'show']);
+        Route::put('bills/{bill}', [BillController::class, 'update']);
+        Route::delete('bills/{bill}', [BillController::class, 'destroy']);
+        
+        // Other bill routes can remain after
         Route::get('bills/{bill}/items', [BillController::class, 'getItems']);
         Route::post('bills/{bill}/items', [BillController::class, 'addItem']);
         Route::put('bills/{bill}/items/{item}', [BillController::class, 'updateItem']);
         Route::delete('bills/{bill}/items/{item}', [BillController::class, 'removeItem']);
-        Route::get('bills/by-patient/{patient}', [BillController::class, 'getPatientBills']);
         Route::get('bills/{bill}/pdf', [BillController::class, 'downloadPdf'])->name('bills.pdf.download');
     });
 
-    // Bill routes for patients (read-only)
-    Route::group(['middleware' => ['jwt.auth']], function () {
-        Route::get('patient/bills', [BillController::class, 'getMyBills']);
-        Route::get('patient/bills/{bill}', [BillController::class, 'viewBill']);
-    });
+    // Bill routes for patients (read-only) - REMOVE extra middleware group
+    Route::get('patient/bills', [BillController::class, 'getMyBills']);
+    Route::get('patient/bills/{bill}', [BillController::class, 'viewBill']);
 
     // APPOINTMENT MANAGEMENT ROUTES
     
@@ -186,6 +197,23 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         //  Doctor settings endpoints
         Route::get('/settings', [DoctorAppointmentController::class, 'getSettings']);     // GET /api/doctor/appointments/settings
         Route::put('/settings', [DoctorAppointmentController::class, 'updateSettings']);  // PUT /api/doctor/appointments/settings
+    });
+
+    // Personal Info routes (Patient access)
+    Route::middleware(['auth:api'])->group(function () {
+        // Patient personal info routes
+        Route::prefix('patient/profile')->group(function () {
+            Route::get('/', [PersonalInfoController::class, 'getProfile']);
+            Route::put('/', [PersonalInfoController::class, 'updateProfile']);
+            Route::post('/image', [PersonalInfoController::class, 'updateProfileImage']);
+        });
+        
+        // Admin/Staff access to patient personal info
+        Route::middleware(['permission:patients:view'])->group(function () {
+            Route::get('/patients/{patient}/personal-info', [PersonalInfoController::class, 'getPatientPersonalInfo']);
+            Route::put('/patients/{patient}/personal-info', [PersonalInfoController::class, 'updatePatientPersonalInfo'])
+                ->middleware(['permission:patients:edit']);
+        });
     });
 });
 

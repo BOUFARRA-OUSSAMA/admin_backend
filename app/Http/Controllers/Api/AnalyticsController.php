@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use App\Services\FinancialAnalyticsService; 
 use App\Http\Requests\Analytics\RevenueAnalyticsRequest; 
 use App\Http\Requests\Analytics\DateRangeRequest;
+use App\Services\DateFilterService;
 
 class AnalyticsController extends Controller
 {
@@ -450,20 +451,57 @@ class AnalyticsController extends Controller
     }
 
     /**
-     * Get revenue analytics with specified timeframe
+     * Get revenue analytics with specified timeframe and filters
      * 
      * @param RevenueAnalyticsRequest $request
      * @param FinancialAnalyticsService $service
+     * @param DateFilterService $dateFilterService
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getRevenueAnalytics(RevenueAnalyticsRequest $request, FinancialAnalyticsService $service)
-    {
+    public function getRevenueAnalytics(
+        RevenueAnalyticsRequest $request, 
+        FinancialAnalyticsService $service,
+        DateFilterService $dateFilterService
+    ) {
+        // Start with the original parameters
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $year = $request->input('year');
+        $timeframe = $request->input('timeframe') ?? 'monthly';
+        
+        // Handle preset_period if provided
+        if ($request->has('preset_period')) {
+            $dateRange = $dateFilterService->getDateRangeFromPreset(
+                $request->input('preset_period'), 
+                $request->header('Timezone')
+            );
+            $fromDate = $dateRange['date_from'];
+            $toDate = $dateRange['date_to'];
+        }
+        // Handle year-specific filtering (keeping your existing logic)
+        else if ($timeframe === 'yearly' && $year) {
+            $fromDate = Carbon::createFromDate($year, 1, 1)->format('Y-m-d');
+            $toDate = Carbon::createFromDate($year, 12, 31)->format('Y-m-d');
+        }
+        
+        // Collect additional filters
+        $additionalFilters = $request->only([
+            'doctor_id',
+            'doctor_name',
+            'patient_id',
+            'payment_method',
+            'service_type'
+        ]);
+        
+        // Get revenue analytics using the determined date range and additional filters
         $data = $service->getRevenueAnalytics(
-            $request['timeframe'] ?? 'monthly',
-            $request['from_date'] ?? null,
-            $request['to_date'] ?? null
+            $timeframe,
+            $fromDate,
+            $toDate,
+            $additionalFilters
         );
         
+        // Keep your original response structure
         return response()->json([
             'success' => true,
             'data' => [
@@ -489,7 +527,15 @@ class AnalyticsController extends Controller
         $toDate = isset($request['to_date']) ? Carbon::parse($request['to_date']) : Carbon::now();
         $fromDate = isset($request['from_date']) ? Carbon::parse($request['from_date']) : $toDate->copy()->subMonths(6);
 
-        $serviceBreakdown = $service->getServiceAnalytics($fromDate, $toDate);
+        // Collect additional filters (if you implement this in ServiceAnalytics method)
+        $additionalFilters = $request->only([
+            'doctor_id',
+            'doctor_name',
+            'patient_id',
+            'payment_method'
+        ]);
+
+        $serviceBreakdown = $service->getServiceAnalytics($fromDate, $toDate, $additionalFilters);
         
         return response()->json([
             'success' => true,
@@ -517,6 +563,66 @@ class AnalyticsController extends Controller
             'success' => true,
             'data' => [
                 'doctor_revenue' => $doctorRevenueData
+            ]
+        ]);
+    }
+
+    /**
+     * Get current week revenue analytics
+     */
+    public function getCurrentWeekRevenue(FinancialAnalyticsService $service)
+    {
+        $data = $service->getRevenueAnalytics('weekly');
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_revenue' => $data['revenue_metrics']['period_revenue'],
+                'average_bill_amount' => $data['revenue_metrics']['average_bill_amount'],
+                'bill_count' => $data['revenue_metrics']['bill_count'],
+                'start_date' => Carbon::now()->startOfWeek()->format('Y-m-d'),
+                'end_date' => Carbon::now()->endOfWeek()->format('Y-m-d'),
+                'daily_breakdown' => $data['revenue_by_period']
+            ]
+        ]);
+    }
+
+    /**
+     * Get current month revenue analytics
+     */
+    public function getCurrentMonthRevenue(FinancialAnalyticsService $service)
+    {
+        $data = $service->getRevenueAnalytics('monthly');
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_revenue' => $data['revenue_metrics']['period_revenue'],
+                'average_bill_amount' => $data['revenue_metrics']['average_bill_amount'],
+                'bill_count' => $data['revenue_metrics']['bill_count'],
+                'start_date' => Carbon::now()->startOfMonth()->format('Y-m-d'),
+                'end_date' => Carbon::now()->endOfMonth()->format('Y-m-d'),
+                'daily_breakdown' => $data['revenue_by_period']
+            ]
+        ]);
+    }
+
+    /**
+     * Get current year revenue analytics
+     */
+    public function getCurrentYearRevenue(FinancialAnalyticsService $service)
+    {
+        $data = $service->getRevenueAnalytics('yearly');
+        
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_revenue' => $data['revenue_metrics']['period_revenue'],
+                'average_bill_amount' => $data['revenue_metrics']['average_bill_amount'],
+                'bill_count' => $data['revenue_metrics']['bill_count'],
+                'start_date' => Carbon::now()->startOfYear()->format('Y-m-d'),
+                'end_date' => Carbon::now()->endOfYear()->format('Y-m-d'),
+                'monthly_breakdown' => $data['revenue_by_period']
             ]
         ]);
     }

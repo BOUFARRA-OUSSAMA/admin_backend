@@ -102,4 +102,20 @@ interface BillRepositoryInterface
      * @return \Illuminate\Support\Collection
      */
     public function getDoctorRevenueAnalytics(\Carbon\Carbon $fromDate, \Carbon\Carbon $toDate): \Illuminate\Support\Collection;
+
+    /**
+     * Get filtered bills
+     *
+     * @param array $filters
+     * @param int $perPage
+     * @return LengthAwarePaginator
+     */
+    public function getBills(array $filters = [], int $perPage = 15): LengthAwarePaginator;
+
+    /**
+     * Get the repository's model
+     *
+     * @return \Illuminate\Database\Eloquent\Model
+     */
+    public function getModel();
 }

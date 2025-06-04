@@ -14,6 +14,7 @@ class BillItem extends Model
         'service_type',
         'description',
         'price',
+        'total',
     ];
 
     protected $casts = [

@@ -37,7 +37,6 @@ class UpdateBillRequest extends FormRequest
                 Rule::unique('bills', 'bill_number')->ignore($bill),
             ],
             'issue_date' => 'sometimes|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
             'payment_method' => 'sometimes|string|in:cash,credit_card,insurance,bank_transfer',
             'description' => 'nullable|string',
             'regenerate_pdf' => 'nullable|boolean',
@@ -47,7 +46,6 @@ class UpdateBillRequest extends FormRequest
             'items.*.service_type' => 'required|string|max:100',
             'items.*.description' => 'nullable|string',
             'items.*.price' => 'required|numeric|min:0',
-            'items.*.quantity' => 'required|integer|min:1',
-        ];
+            ];
     }
 }
