@@ -19,6 +19,9 @@ use App\Repositories\Eloquent\BillRepository;
 use App\Repositories\Interfaces\BillItemRepositoryInterface;
 use App\Repositories\Eloquent\BillItemRepository;
 use Illuminate\Support\ServiceProvider;
+use App\Repositories\Interfaces\PersonalInfoRepositoryInterface;
+use App\Repositories\Eloquent\PersonalInfoRepository;
+
 
 class RepositoryServiceProvider extends ServiceProvider
 {
@@ -37,6 +40,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(AiAnalysisRepositoryInterface::class, AiAnalysisRepository::class);
         $this->app->bind(BillRepositoryInterface::class,BillRepository::class);
         $this->app->bind(BillItemRepositoryInterface::class,BillItemRepository::class);
+        $this->app->bind(PersonalInfoRepositoryInterface::class,PersonalInfoRepository::class);
         // Register other repository bindings here
     }
 

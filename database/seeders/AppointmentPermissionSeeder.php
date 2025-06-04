@@ -45,6 +45,19 @@ class AppointmentPermissionSeeder extends Seeder
 
     private function assignPermissionsToRoles()
     {
+        // First, retrieve all the permission objects we need
+        $viewAppointments = Permission::where('code', 'appointments:view-all')->first();
+        $viewOwnAppointments = Permission::where('code', 'appointments:view-own')->first();
+        $createAppointments = Permission::where('code', 'appointments:create')->first();
+        $editAppointments = Permission::where('code', 'appointments:update')->first();
+        $cancelAppointments = Permission::where('code', 'appointments:cancel')->first();
+        $confirmAppointments = Permission::where('code', 'appointments:confirm')->first();
+        $completeAppointments = Permission::where('code', 'appointments:complete')->first();
+        $viewSlots = Permission::where('code', 'appointments:view-slots')->first();
+        $manageSchedule = Permission::where('code', 'appointments:manage-schedule')->first();
+        $blockSlots = Permission::where('code', 'appointments:block-slots')->first();
+        $viewReports = Permission::where('code', 'appointments:reports')->first();
+        
         // Admin gets all permissions
         $adminRole = Role::where('code', 'admin')->first();
         if ($adminRole) {
@@ -85,25 +98,27 @@ class AppointmentPermissionSeeder extends Seeder
 
         // Receptionist permissions
         $receptionistRole = Role::where('code', 'receptionist')->first();
-        $nurseRole = Role::where('code', 'nurse')->first();
-
-        if ($receptionistRole) {
+        if ($receptionistRole && $viewAppointments && $createAppointments && $editAppointments && 
+            $cancelAppointments && $confirmAppointments && $completeAppointments && $viewReports) {
+            
             $receptionistRole->permissions()->syncWithoutDetaching([
                 $viewAppointments->id,
-                $manageAppointments->id,  // ✅ Full admin access
+                $viewReports->id,  // Added for reporting
                 $createAppointments->id,
                 $editAppointments->id,
-                $deleteAppointments->id,
                 $cancelAppointments->id,
                 $confirmAppointments->id,
                 $completeAppointments->id,
             ]);
         }
 
-        if ($nurseRole) {
+        // Nurse permissions
+        $nurseRole = Role::where('code', 'nurse')->first();
+        if ($nurseRole && $viewAppointments && $createAppointments && $editAppointments && 
+            $cancelAppointments && $confirmAppointments && $completeAppointments) {
+            
             $nurseRole->permissions()->syncWithoutDetaching([
                 $viewAppointments->id,
-                $manageAppointments->id,  // ✅ Full admin access
                 $createAppointments->id,
                 $editAppointments->id,
                 $cancelAppointments->id,

@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Patient;
+use App\Models\PersonalInfo;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -54,7 +56,7 @@ class AdminUserSeeder extends Seeder
             $doctorUser->roles()->sync([$doctorRole->id]);
         }
 
-        // Create a test patient
+        // ✅ FIX: Create a test patient WITH proper Patient record
         $patientUser = User::updateOrCreate(
             [
                 'email' => 'patient@example.com',
@@ -72,5 +74,32 @@ class AdminUserSeeder extends Seeder
         if ($patientRole) {
             $patientUser->roles()->sync([$patientRole->id]);
         }
+
+        // ✅ CREATE THE MISSING PATIENT RECORD
+        $patient = Patient::updateOrCreate(
+            ['user_id' => $patientUser->id],
+            [
+                'registration_date' => now(),
+            ]
+        );
+
+        // ✅ CREATE PERSONAL INFO FOR THE PATIENT
+        PersonalInfo::updateOrCreate(
+            ['patient_id' => $patient->id],
+            [
+                'name' => 'Test',
+                'surname' => 'Patient',
+                'birthdate' => '1990-01-01',
+                'gender' => 'other',
+                'address' => '123 Test Street, Test City',
+                'emergency_contact' => 'Emergency Contact - 555-0000',
+                'marital_status' => 'single',
+                'blood_type' => 'O+',
+                'nationality' => 'American',
+            ]
+        );
+
+        $this->command->info('✅ Created admin, doctor, and patient users with proper Patient record linkage');
+        $this->command->info("Patient User ID: {$patientUser->id} → Patient ID: {$patient->id}");
     }
 }

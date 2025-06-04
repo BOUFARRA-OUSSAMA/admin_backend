@@ -25,7 +25,6 @@ class StoreBillItemRequest extends FormRequest
             'service_type' => 'required|string|max:100',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'quantity' => 'required|integer|min:1',
         ];
     }
 }

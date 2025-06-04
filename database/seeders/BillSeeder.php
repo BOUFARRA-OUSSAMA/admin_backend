@@ -46,29 +46,22 @@ class BillSeeder extends Seeder
         }
         
         // Get or create patients (at least 20)
+        // Use existing patients from PatientSeeder
         $patients = Patient::all();
-        $patientRole = Role::where('code', 'patient')->first();
         
-        if ($patients->count() < 20) {
-            $this->command->info('Creating additional patients for testing...');
-            for ($i = $patients->count(); $i < 20; $i++) {
-                $patientUser = User::create([
-                    'name' => $faker->name,
-                    'email' => 'patient_' . Str::random(6) . '@example.com',
-                    'password' => bcrypt('password'),
-                    'status' => 'active',
-                ]);
-                
-                $patientUser->roles()->attach($patientRole->id);
-                
-                $patient = Patient::create([
-                    'user_id' => $patientUser->id,
-                    'registration_date' => $faker->dateTimeBetween('-3 years', 'now')->format('Y-m-d'),
-                ]);
-                
-                $patients->push($patient);
-            }
+        if ($patients->isEmpty()) {
+            $this->command->error('No patients found. Please run PatientSeeder first.');
+            return;
         }
+        
+        // Ensure we have at least 20 patients for bill creation
+        if ($patients->count() < 20) {
+            $this->command->warning('Less than 20 patients found. Some bills may use the same patients repeatedly.');
+        }
+        
+        $this->command->info('Using ' . $patients->count() . ' existing patients for bill generation');
+        
+        $patientRole = Role::where('code', 'patient')->first();
         
         // Get admin user for created_by field
         $adminUser = User::whereHas('roles', function($query) {

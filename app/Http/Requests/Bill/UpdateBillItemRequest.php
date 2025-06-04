@@ -25,7 +25,6 @@ class UpdateBillItemRequest extends FormRequest
             'service_type' => 'sometimes|string|max:100',
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
-            'quantity' => 'sometimes|integer|min:1',
         ];
     }
 }

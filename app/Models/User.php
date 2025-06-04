@@ -106,6 +106,7 @@ class User extends Authenticatable implements JWTSubject
         return $role->intersect($this->roles)->count() > 0;
     }
 
+  
     /**
      * Get all permissions for the user
      */

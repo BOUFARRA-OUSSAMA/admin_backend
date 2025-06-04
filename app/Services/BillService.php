@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Facades\LogActivity;
+use Illuminate\Support\Facades\Log;
+
 
 class BillService
 {
@@ -48,11 +50,8 @@ class BillService
      */
     public function getAllBills(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->billRepository->getAllWithFilters(
-            $filters,
-            ['patient', 'doctor', 'items'],
-            $perPage
-        );
+        // Change from getAll() to one of the methods that actually exists
+        return $this->billRepository->getBills($filters, $perPage);
     }
     
     /**
@@ -378,7 +377,38 @@ class BillService
     public function getAuthenticatedPatientBills(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $user = Auth::user();
-        $patient = Patient::where('user_id', $user->id)->firstOrFail();
+        
+        // Find patient record for this user
+        $patient = Patient::where('user_id', $user->id)->first();
+        
+        if (!$patient) {
+            // Log this issue for debugging
+            Log::warning('No Patient record found for authenticated user', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'user_name' => $user->name
+            ]);
+            
+            // If no patient record exists, return empty paginator
+            // This handles cases where:
+            // - User doesn't have a patient record yet
+            // - User is admin/staff accessing the endpoint
+            // - Any other user type
+            return new LengthAwarePaginator(
+                collect([]),
+                0,
+                $perPage,
+                1,
+                ['path' => request()->url()]
+            );
+        }
+        
+        // Log successful patient lookup for debugging
+        Log::info('Found Patient record for user', [
+            'user_id' => $user->id,
+            'patient_id' => $patient->id,
+            'patient_user_id' => $patient->user_id
+        ]);
         
         return $this->getPatientBills($patient->id, $filters, $perPage);
     }

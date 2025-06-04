@@ -42,7 +42,8 @@ class BillItemRepository implements BillItemRepositoryInterface
      */
     public function create(array $data): BillItem
     {
-        return $this->model->create($data);
+        // Make sure this method properly handles all the fields including 'total'
+        return BillItem::create($data);
     }
     
     /**

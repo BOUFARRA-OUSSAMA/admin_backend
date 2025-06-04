@@ -26,7 +26,6 @@ class StoreBillRequest extends FormRequest
             'doctor_user_id' => 'required|exists:users,id',
             'bill_number' => 'nullable|string|max:50|unique:bills,bill_number',
             'issue_date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:issue_date',
             'payment_method' => 'required|string|in:cash,credit_card,insurance,bank_transfer',
             'description' => 'nullable|string',
             'generate_pdf' => 'nullable|boolean',
@@ -36,7 +35,6 @@ class StoreBillRequest extends FormRequest
             'items.*.service_type' => 'required|string|max:100',
             'items.*.description' => 'nullable|string',
             'items.*.price' => 'required|numeric|min:0',
-            'items.*.quantity' => 'required|integer|min:1',
         ];
     }
 }
