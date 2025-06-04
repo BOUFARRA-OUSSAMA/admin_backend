@@ -413,7 +413,7 @@ class PatientAppointmentService
             ->exists();
 
         if ($sameDay) {
-            throw new Exception("You already have an appointment with Dr. {$doctor->user->name} on this date");
+            throw new Exception("You already have an appointment with {$doctor->user->name} on this date");
         }
 
         // Check minimum booking notice (2 hours)

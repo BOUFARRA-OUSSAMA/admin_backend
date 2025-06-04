@@ -471,21 +471,56 @@ class DoctorAppointmentController extends Controller
     }
 
     /**
-     * Get blocked time slots
+     * Get blocked time slots (supports both single date and date range)
      */
     public function blockedSlots(Request $request): JsonResponse
     {
         try {
-            $date = $request->get('date', now()->format('Y-m-d'));
-            
-            $blockedSlots = BlockedTimeSlot::where('doctor_user_id', Auth::id())
-                ->whereDate('start_datetime', $date)
-                ->get();
+            $validator = Validator::make($request->all(), [
+                'date' => 'nullable|date',
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $query = BlockedTimeSlot::where('doctor_user_id', Auth::id());
+
+            // Support both single date and date range queries
+            if ($request->has('start_date') && $request->has('end_date')) {
+                // Date range query (for week/month views)
+                $query->whereBetween('start_datetime', [
+                    $request->start_date . ' 00:00:00',
+                    $request->end_date . ' 23:59:59'
+                ]);
+                $dateInfo = [
+                    'start_date' => $request->start_date,
+                    'end_date' => $request->end_date,
+                    'query_type' => 'range'
+                ];
+            } else {
+                // Single date query (for day view)
+                $date = $request->get('date', now()->format('Y-m-d'));
+                $query->whereDate('start_datetime', $date);
+                $dateInfo = [
+                    'date' => $date,
+                    'query_type' => 'single'
+                ];
+            }
+
+            $blockedSlots = $query->orderBy('start_datetime', 'asc')->get();
 
             return response()->json([
                 'success' => true,
                 'data' => $blockedSlots,
-                'date' => $date
+                'total_blocked_slots' => $blockedSlots->count(),
+                'date_info' => $dateInfo
             ]);
 
         } catch (Exception $e) {
