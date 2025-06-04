@@ -111,9 +111,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     });
 
     // APPOINTMENT MANAGEMENT ROUTES
-    
+    // ->middleware(['permission:appointments:manage'])
     // ADMIN/RECEPTIONIST APPOINTMENT ROUTES - Updated permissions
-    Route::prefix('appointments')->middleware(['permission:appointments:manage'])->group(function () {
+    Route::prefix('appointments')->group(function () {
         Route::get('/', [AppointmentController::class, 'index']);                    // GET /api/appointments
         Route::post('/', [AppointmentController::class, 'store']);                   // POST /api/appointments
         Route::get('/{id}', [AppointmentController::class, 'show']);                 // GET /api/appointments/{id}
@@ -177,8 +177,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::post('/{id}/no-show', [DoctorAppointmentController::class, 'markNoShow']); // POST /api/doctor/appointments/{id}/no-show
         Route::post('/{id}/reschedule', [DoctorAppointmentController::class, 'reschedule']); // ✅ ADD THIS
     
-        // Time slot management
-        Route::post('/time-slots', [DoctorAppointmentController::class, 'createTimeSlots']);      // POST /api/doctor/appointments/time-slots
+        // Time slot management      // POST /api/doctor/appointments/time-slots
         Route::post('/time-slots/block', [DoctorAppointmentController::class, 'blockTimeSlots']); // POST /api/doctor/appointments/time-slots/block
         Route::get('/time-slots/blocked', [DoctorAppointmentController::class, 'blockedSlots']);  // GET /api/doctor/appointments/time-slots/blocked
         Route::delete('/time-slots/blocked/{id}', [DoctorAppointmentController::class, 'unblockTimeSlot']); // DELETE /api/doctor/appointments/time-slots/blocked/{id}
