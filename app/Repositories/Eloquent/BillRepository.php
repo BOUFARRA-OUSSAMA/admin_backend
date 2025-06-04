@@ -34,73 +34,26 @@ class BillRepository implements BillRepositoryInterface
      */
     public function getAllWithFilters(array $filters = [], array $relationships = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = $this->model->query();
+        $query = $this->model->newQuery();
         
-        // Doctor filtering - ID has precedence over name
-        if (!empty($filters['doctor_id'])) {
-            $query->where('doctor_user_id', $filters['doctor_id']);
-        } elseif (!empty($filters['doctor_name'])) {
-            $query->whereHas('doctor', function($q) use ($filters) {
-                $q->where('name', 'LIKE', '%' . $filters['doctor_name'] . '%');
-            });
-        }
+        // Apply filters using the new method
+        $query = $this->applyFilters($query, $filters);
         
-        // Load relationships if provided
+        // Load relationships
         if (!empty($relationships)) {
             $query->with($relationships);
         }
         
-        // Apply filters
-        if (isset($filters['patient_id'])) {
-            $query->where('patient_id', $filters['patient_id']);
-        }
-        
-        if (isset($filters['date_from'])) {
-            $query->where('issue_date', '>=', $filters['date_from']);
-        }
-        
-        if (isset($filters['date_to'])) {
-            $query->where('issue_date', '<=', $filters['date_to']);
-        }
-        
-        if (isset($filters['amount_min'])) {
-            $query->where('amount', '>=', $filters['amount_min']);
-        }
-        
-        if (isset($filters['amount_max'])) {
-            $query->where('amount', '<=', $filters['amount_max']);
-        }
-        
-        if (!empty($filters['payment_method'])) {
-            // Handle comma-separated payment methods
-            if (strpos($filters['payment_method'], ',') !== false) {
-                $paymentMethods = explode(',', $filters['payment_method']);
-                $query->whereIn('payment_method', $paymentMethods);
-            } else {
-                $query->where('payment_method', $filters['payment_method']);
-            }
-        }
-        
-        // Add service_type filtering
-        if (!empty($filters['service_type'])) {
-            $query->whereHas('items', function($itemsQuery) use ($filters) {
-                // Handle comma-separated service types
-                if (strpos($filters['service_type'], ',') !== false) {
-                    $serviceTypes = explode(',', $filters['service_type']);
-                    $itemsQuery->whereIn('service_type', $serviceTypes);
-                } else {
-                    $itemsQuery->where('service_type', $filters['service_type']);
-                }
-            });
-        }
-        
         // Apply sorting
-        $sortBy = $filters['sort_by'] ?? 'issue_date';
+        $sortBy = $filters['sort_by'] ?? 'created_at';
         $sortDirection = $filters['sort_direction'] ?? 'desc';
         
-        $allowedSortFields = ['issue_date', 'amount', 'bill_number'];
-        if (in_array($sortBy, $allowedSortFields)) {
-            $query->orderBy($sortBy, $sortDirection === 'asc' ? 'asc' : 'desc');
+        // Validate sort column to prevent SQL injection
+        $allowedSortColumns = ['id', 'bill_number', 'amount', 'issue_date', 'created_at', 'updated_at'];
+        if (in_array($sortBy, $allowedSortColumns)) {
+            $query->orderBy($sortBy, $sortDirection);
+        } else {
+            $query->orderBy('created_at', 'desc');
         }
         
         return $query->paginate($perPage);
@@ -304,73 +257,7 @@ class BillRepository implements BillRepositoryInterface
      */
     public function getBills(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        $query = $this->model->newQuery();
-        
-        // Doctor filtering - ID has precedence over name
-        if (!empty($filters['doctor_id'])) {
-            $query->where('doctor_user_id', $filters['doctor_id']);
-        } elseif (!empty($filters['doctor_name'])) {
-            $query->whereHas('doctor', function($q) use ($filters) {
-                $q->where('name', 'LIKE', '%' . $filters['doctor_name'] . '%');
-            });
-        }
-        
-        // Apply other existing filters
-        if (!empty($filters['patient_id'])) {
-            $query->where('patient_id', $filters['patient_id']);
-        }
-        
-        if (!empty($filters['date_from'])) {
-            $query->whereDate('issue_date', '>=', $filters['date_from']);
-        }
-        
-        if (!empty($filters['date_to'])) {
-            $query->whereDate('issue_date', '<=', $filters['date_to']);
-        }
-        
-        if (!empty($filters['amount_min'])) {
-            $query->where('amount', '>=', $filters['amount_min']);
-        }
-        
-        if (!empty($filters['amount_max'])) {
-            $query->where('amount', '<=', $filters['amount_max']);
-        }
-        
-        // Payment method filtering
-        if (!empty($filters['payment_method'])) {
-            if (strpos($filters['payment_method'], ',') !== false) {
-                $paymentMethods = explode(',', $filters['payment_method']);
-                $query->whereIn('payment_method', $paymentMethods);
-            } else {
-                $query->where('payment_method', $filters['payment_method']);
-            }
-        }
-        
-        // Service type filtering
-        if (!empty($filters['service_type'])) {
-            $query->whereHas('items', function($itemsQuery) use ($filters) {
-                if (strpos($filters['service_type'], ',') !== false) {
-                    $serviceTypes = explode(',', $filters['service_type']);
-                    $itemsQuery->whereIn('service_type', $serviceTypes);
-                } else {
-                    $itemsQuery->where('service_type', $filters['service_type']);
-                }
-            });
-        }
-        
-        // Apply sorting
-        $sortBy = $filters['sort_by'] ?? 'issue_date';
-        $sortDirection = $filters['sort_direction'] ?? 'desc';
-        
-        $allowedSortFields = ['issue_date', 'amount', 'bill_number'];
-        if (in_array($sortBy, $allowedSortFields)) {
-            $query->orderBy($sortBy, $sortDirection === 'asc' ? 'asc' : 'desc');
-        }
-        
-        // Load common relationships
-        $query->with(['patient', 'doctor', 'items']);
-        
-        return $query->paginate($perPage);
+        return $this->getAllWithFilters($filters, ['patient', 'doctor', 'items'], $perPage);
     }
     
     /**
@@ -381,5 +268,93 @@ class BillRepository implements BillRepositoryInterface
     public function getModel()
     {
         return $this->model;
+    }
+
+    /**
+     * Apply filters to the query
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param array $filters
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    protected function applyFilters($query, array $filters = [])
+    {
+        // Handle multiple doctor IDs (comma-separated)
+        if (!empty($filters['doctor_id'])) {
+            if (strpos($filters['doctor_id'], ',') !== false) {
+                $doctorIds = array_map('trim', explode(',', $filters['doctor_id']));
+                $doctorIds = array_filter($doctorIds, 'is_numeric'); // Ensure only numeric values
+                $query->whereIn('doctor_user_id', $doctorIds);
+            } else {
+                $query->where('doctor_user_id', $filters['doctor_id']);
+            }
+        }
+        
+        // Handle multiple doctor names (comma-separated)
+        if (!empty($filters['doctor_name'])) {
+            if (strpos($filters['doctor_name'], ',') !== false) {
+                $doctorNames = array_map('trim', explode(',', $filters['doctor_name']));
+                $query->whereHas('doctor', function($q) use ($doctorNames) {
+                    $q->where(function($nameQuery) use ($doctorNames) {
+                        foreach ($doctorNames as $name) {
+                            $nameQuery->orWhere('name', 'LIKE', '%' . $name . '%');
+                        }
+                    });
+                });
+            } else {
+                $query->whereHas('doctor', function($q) use ($filters) {
+                    $q->where('name', 'LIKE', '%' . $filters['doctor_name'] . '%');
+                });
+            }
+        }
+        
+        // Handle patient ID
+        if (!empty($filters['patient_id'])) {
+            $query->where('patient_id', $filters['patient_id']);
+        }
+        
+        // Handle date filtering
+        if (!empty($filters['date_from'])) {
+            $query->whereDate('issue_date', '>=', $filters['date_from']);
+        }
+        
+        if (!empty($filters['date_to'])) {
+            $query->whereDate('issue_date', '<=', $filters['date_to']);
+        }
+        
+        // Handle amount filtering
+        if (!empty($filters['amount_min'])) {
+            $query->where('amount', '>=', $filters['amount_min']);
+        }
+        
+        if (!empty($filters['amount_max'])) {
+            $query->where('amount', '<=', $filters['amount_max']);
+        }
+        
+        // Handle multiple payment methods (comma-separated)
+        if (!empty($filters['payment_method'])) {
+            if (strpos($filters['payment_method'], ',') !== false) {
+                $paymentMethods = array_map('trim', explode(',', $filters['payment_method']));
+                $query->whereIn('payment_method', $paymentMethods);
+            } else {
+                $query->where('payment_method', $filters['payment_method']);
+            }
+        }
+        
+        // Handle multiple service types (comma-separated)
+        if (!empty($filters['service_type'])) {
+            if (strpos($filters['service_type'], ',') !== false) {
+                $serviceTypes = array_map('trim', explode(',', $filters['service_type']));
+                $query->whereHas('items', function($itemsQuery) use ($serviceTypes) {
+                    $itemsQuery->whereIn('service_type', $serviceTypes);
+                });
+            } else {
+                $query->whereHas('items', function($itemsQuery) use ($filters) {
+                    $itemsQuery->where('service_type', $filters['service_type']);
+                });
+            }
+        }
+        
+        return $query;
     }
 }
