@@ -1203,3 +1203,398 @@ Authorization: Bearer {access_token}
 ```
 
 **Response:** CSV file download
+
+## Bills API Documentation
+
+### Access Control
+- **Staff/Receptionists**: Full access to bill management (requires `bills:manage` permission)
+- **Patients**: Read-only access to their own bills
+- **Doctors**: No direct bill access (view through analytics only)
+
+### Endpoints
+
+#### Staff/Receptionist Endpoints
+
+##### List All Bills
+**Endpoint:** `GET /api/bills`
+
+**Permission Required:** `bills:manage`
+
+**Description:** Retrieves bills with powerful filtering capabilities
+
+**Query Parameters:**
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| doctor_id | integer/string | Filter by doctor ID(s), comma-separated | `2,5,6` |
+| doctor_name | string | Filter by doctor name(s), comma-separated | `Test Doctor,Michael Chen` |
+| patient_id | integer | Filter by patient ID | `209` |
+| date_from | date | Filter bills from this date (YYYY-MM-DD) | `2025-05-01` |
+| date_to | date | Filter bills until this date (YYYY-MM-DD) | `2025-06-30` |
+| preset_period | string | Use preset period (week, month, year) | `month` |
+| amount_min | decimal | Minimum bill amount | `500` |
+| amount_max | decimal | Maximum bill amount | `2000` |
+| payment_method | string | Filter by payment method(s), comma-separated | `cash,insurance` |
+| service_type | string | Filter by service type(s), comma-separated | `SURGERY,LAB` |
+| sort_by | string | Field to sort by | `amount`, `issue_date`, `created_at` |
+| sort_direction | string | Sort direction | `asc`, `desc` (default) |
+| per_page | integer | Items per page | `10` (default: 15) |
+| page | integer | Page number | `1` |
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Bills retrieved successfully",
+  "data": {
+    "items": [
+      {
+        "id": 1576,
+        "patient_id": 209,
+        "doctor_user_id": 2,
+        "bill_number": "EDGE-20250601-215050-1cc6d",
+        "amount": "16300.00",
+        "issue_date": "2025-06-01T00:00:00.000000Z",
+        "payment_method": "insurance",
+        "description": "Complex surgical procedure with specialized care",
+        "pdf_path": null,
+        "created_by_user_id": 1,
+        "created_at": "2025-06-01T21:50:50.000000Z",
+        "updated_at": "2025-06-01T21:50:50.000000Z",
+        "patient": { ... },
+        "doctor": { ... },
+        "items": [ ... ]
+      }
+      // More bills...
+    ],
+    "pagination": {
+      "total": 120,
+      "current_page": 1,
+      "per_page": 15,
+      "last_page": 8
+    }
+  }
+}
+```
+
+##### Get Bills for Specific Patient
+**Endpoint:** `GET /api/bills/by-patient/{patient}`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{patient}`: Patient ID
+
+**Query Parameters:** Supports the same date, amount, and service filters as the main bills endpoint
+
+**Response:** Same format as GET /api/bills
+
+##### Create Bill
+**Endpoint:** `POST /api/bills`
+
+**Permission Required:** `bills:manage`
+
+**Request Body:**
+```json
+{
+  "patient_id": 209,
+  "doctor_user_id": 5,
+  "bill_number": "BILL-20250605-001",
+  "issue_date": "2025-06-05",
+  "payment_method": "insurance",
+  "description": "Complete medical examination",
+  "items": [
+    { "service_type": "CHECKUP", "description": "General Health Checkup", "price": 200.00 },
+    { "service_type": "LAB", "description": "Blood Work Panel", "price": 350.00 }
+  ]
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Bill created successfully",
+  "data": { ... }
+}
+```
+
+##### Get Single Bill
+**Endpoint:** `GET /api/bills/{bill}`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+
+**Response (200):** Same format as bill object in the list response
+
+##### Update Bill
+**Endpoint:** `PUT /api/bills/{bill}`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+
+**Request Body:**
+```json
+{
+  "patient_id": 209,
+  "doctor_user_id": 5,
+  "bill_number": "BILL-20250605-001-REV",
+  "issue_date": "2025-06-05",
+  "payment_method": "credit_card",
+  "description": "Complete medical examination with additional tests",
+  "regenerate_pdf": true,
+  "items": [ ... ]
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Bill updated successfully",
+  "data": { ... }
+}
+```
+
+##### Delete Bill
+**Endpoint:** `DELETE /api/bills/{bill}`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Bill deleted successfully"
+}
+```
+
+##### Get Bill Items
+**Endpoint:** `GET /api/bills/{bill}/items`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Bill items retrieved successfully",
+  "data": [ ... ]
+}
+```
+
+##### Add Bill Item
+**Endpoint:** `POST /api/bills/{bill}/items`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+
+**Request Body:**
+```json
+{
+  "service_type": "MEDS",
+  "description": "Prescription Medication",
+  "price": 85.00
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Item added to bill successfully",
+  "data": { ... }
+}
+```
+
+##### Update Bill Item
+**Endpoint:** `PUT /api/bills/{bill}/items/{item}`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+- `{item}`: Item ID
+
+**Request Body:**
+```json
+{
+  "service_type": "MEDS",
+  "description": "Extended Prescription Medication",
+  "price": 120.00
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Bill item updated successfully",
+  "data": { ... }
+}
+```
+
+##### Remove Bill Item
+**Endpoint:** `DELETE /api/bills/{bill}/items/{item}`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+- `{item}`: Item ID
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Bill item removed successfully"
+}
+```
+
+##### Download Bill PDF
+**Endpoint:** `GET /api/bills/{bill}/pdf`
+
+**Permission Required:** `bills:manage`
+
+**Parameters:**
+- `{bill}`: Bill ID
+
+**Response:** PDF file download
+
+#### Patient Endpoints
+
+##### Get My Bills
+**Endpoint:** `GET /api/patient/bills`
+
+**Access:** Patient role only (self-service)
+
+**Query Parameters:**
+- `date_from`, `date_to`, `sort_by`, `sort_direction`, `per_page`, `page`
+
+**Response (200):** Same format as staff bill listing, but limited to the authenticated patient's bills
+
+##### View Specific Bill
+**Endpoint:** `GET /api/patient/bills/{bill}`
+
+**Access:** Patient role only (self-service)
+
+**Parameters:**
+- `{bill}`: Bill ID
+
+**Response (200):** Same format as bill object in the list response, but only accessible if the bill belongs to the authenticated patient
+
+### Filtering Examples
+
+#### Doctor Filtering
+```http
+GET {{base_url}}/api/bills?doctor_name=Dr. Emily Rodriguez&per_page=10
+GET {{base_url}}/api/bills?doctor_id=6&per_page=10
+GET {{base_url}}/api/bills?doctor_name=Test Doctor,Dr. Michael Chen,Dr. Emily Rodriguez&per_page=10
+GET {{base_url}}/api/bills?doctor_id=2,5,6&per_page=10
+```
+
+#### Payment Method Filtering
+```http
+GET {{base_url}}/api/bills?payment_method=insurance&per_page=10
+GET {{base_url}}/api/bills?payment_method=cash,bank_transfer,insurance&per_page=10
+GET {{base_url}}/api/bills?payment_method=credit_card,bank_transfer,insurance&per_page=10
+```
+
+#### Service Type Filtering
+```http
+GET {{base_url}}/api/bills?service_type=SURGERY&per_page=10
+GET {{base_url}}/api/bills?service_type=CHECKUP,CONSULT,XRAY&per_page=10
+GET {{base_url}}/api/bills?service_type=SURGERY,SPECIALIST,LAB&per_page=10
+GET {{base_url}}/api/bills?service_type=EMERGENCY,SURGERY&per_page=10
+```
+
+#### Amount Range Filtering
+```http
+GET {{base_url}}/api/bills?amount_min=500&per_page=10
+GET {{base_url}}/api/bills?amount_max=500&per_page=10
+GET {{base_url}}/api/bills?amount_min=500&amount_max=2000&per_page=10
+GET {{base_url}}/api/bills?amount_min=10000&per_page=10
+```
+
+#### Date Range Filtering
+```http
+GET {{base_url}}/api/bills?date_from=2025-05-01&date_to=2025-05-31&per_page=10
+GET {{base_url}}/api/bills?date_from=2025-05-01&per_page=10
+GET {{base_url}}/api/bills?date_to=2025-06-30&per_page=10
+GET {{base_url}}/api/bills?preset_period=month&per_page=10
+```
+
+#### Sorting and Pagination
+```http
+GET {{base_url}}/api/bills?sort_by=amount&sort_direction=desc&per_page=10
+GET {{base_url}}/api/bills?sort_by=issue_date&sort_direction=asc&per_page=10
+GET {{base_url}}/api/bills?sort_by=bill_number&sort_direction=asc&per_page=10
+GET {{base_url}}/api/bills?per_page=5&page=2
+```
+
+#### Multi-Filter Complex Queries
+```http
+GET {{base_url}}/api/bills?payment_method=insurance&amount_min=1000&service_type=SURGERY,SPECIALIST,IMAGING&sort_by=amount&sort_direction=desc&per_page=10
+GET {{base_url}}/api/bills?payment_method=cash&service_type=CHECKUP,CONSULT,VACCINE&date_from=2025-05-01&sort_by=issue_date&sort_direction=desc&per_page=10
+GET {{base_url}}/api/bills?doctor_name=Dr. Michael Chen&service_type=EMERGENCY,SURGERY&amount_min=500&date_from=2025-05-01&date_to=2025-06-30&per_page=10
+GET {{base_url}}/api/bills?doctor_name=Test Doctor,Dr. Michael Chen,Dr. Emily Rodriguez&payment_method=bank_transfer,insurance,credit_card&service_type=SURGERY,EMERGENCY,SPECIALIST,LAB,IMAGING&amount_min=500&amount_max=20000&date_from=2025-05-01&date_to=2025-06-30&sort_by=amount&sort_direction=desc&per_page=10&page=1
+```
+
+### Financial Analytics Endpoints
+
+These endpoints provide aggregated financial data and require the `analytics:view` permission.
+
+#### Revenue Analytics
+**Endpoint:** `GET /api/analytics/revenue`
+**Permission Required:** `analytics:view`
+
+#### Service Analytics
+**Endpoint:** `GET /api/analytics/services`
+**Permission Required:** `analytics:view`
+
+#### Doctor Revenue Analytics
+**Endpoint:** `GET /api/analytics/doctor-revenue`
+**Permission Required:** `analytics:view`
+
+### Service Types
+The system recognizes these predefined service types, which can be used for filtering:
+
+| Code | Description |
+|------|-------------|
+| CHECKUP | General Checkup |
+| CONSULT | General Consultation |
+| XRAY | X-Ray Examination |
+| LAB | Laboratory Tests |
+| MEDS | Medication |
+| PHYSIO | Physiotherapy |
+| SURGERY | Surgical Procedure |
+| DENTAL | Dental Work |
+| THERAPY | Therapy Session |
+| EMERGENCY | Emergency Care |
+| IMAGING | Advanced Imaging |
+| SPECIALIST | Specialist Consultation |
+| VACCINE | Vaccination |
+| REHAB | Rehabilitation |
+
+### Payment Methods
+- `cash`: Cash payments
+- `credit_card`: Credit card payments
+- `bank_transfer`: Bank transfers
+- `insurance`: Insurance claims
+
+### Security Notes
+- All bill endpoints require authentication
+- Staff/receptionists need the `bills:manage` permission
+- Patients can only view their own bills
+- Activity logging is enabled for all bill operations
