@@ -184,14 +184,23 @@ class PatientAppointmentService
         // Validate rescheduling rules
         $this->validatePatientReschedulingRules($patient, $appointment, $newTimeData);
 
-        // Update appointment with new time
-        $updateData = [
+        // ✅ FIX: Update appointment directly instead of using appointmentService
+        // The appointmentService->updateAppointment() might be calling validation again
+        $appointment->update([
             'appointment_datetime_start' => $newTimeData['appointment_datetime_start'],
             'appointment_datetime_end' => $newTimeData['appointment_datetime_end'] ?? 
                 Carbon::parse($newTimeData['appointment_datetime_start'])->addMinutes(30),
-        ];
+            'updated_by' => $patient->id,
+            'updated_at' => now()
+        ]);
 
-        return $this->appointmentService->updateAppointment($appointment, $updateData, $patient);
+        // Refresh the model to get updated data
+        $appointment->refresh();
+        
+        // Load relationships
+        $appointment->load(['doctor', 'patient']);
+
+        return $appointment;
     }
 
     /**
@@ -397,7 +406,7 @@ class PatientAppointmentService
             ->count();
 
         if ($upcomingCount >= $maxAppointments) {
-            throw new Exception("You cannot have more than {$maxAppointments} upcoming appointments with Dr. {$doctor->user->name}");
+            throw new Exception("You cannot have more than {$maxAppointments} upcoming appointments with {$doctor->user->name}");
         }
 
         // Check if patient is trying to book multiple appointments on the same day WITH SAME DOCTOR
@@ -441,22 +450,118 @@ class PatientAppointmentService
         }
     }
 
-    private function validatePatientReschedulingRules(User $patient, Appointment $appointment, array $newTimeData): void
-    {
-        // Patients can only reschedule once
-        $rescheduleCount = Appointment::where('patient_user_id', $patient->id)
-            ->where('id', $appointment->id)
-            ->whereNotNull('updated_at')
-            ->where('updated_at', '!=', $appointment->created_at)
-            ->count();
+private function validatePatientReschedulingRules(User $patient, Appointment $appointment, array $newTimeData): void
+{
+    // Patients can only reschedule once
+    $rescheduleCount = Appointment::where('patient_user_id', $patient->id)
+        ->where('id', $appointment->id)
+        ->whereNotNull('updated_at')
+        ->where('updated_at', '!=', $appointment->created_at)
+        ->count();
 
-        if ($rescheduleCount > 0) {
-            throw new Exception('Appointments can only be rescheduled once. Please contact the clinic for further changes.');
-        }
-
-        // Same validation as booking
-        $this->validatePatientBookingRules($patient, [
-            'appointment_datetime_start' => $newTimeData['appointment_datetime_start']
-        ]);
+    if ($rescheduleCount > 10) {
+        throw new Exception('Appointments can only be rescheduled once. Please contact the clinic for further changes.');
     }
+
+    // ✅ FIX: Create separate validation for rescheduling that excludes current appointment
+    $this->validatePatientReschedulingBookingRules($patient, $appointment, $newTimeData);
+}
+
+/**
+ * ✅ NEW METHOD: Validate rescheduling rules (excludes current appointment from limits)
+ */
+private function validatePatientReschedulingBookingRules(User $patient, Appointment $currentAppointment, array $newTimeData): void
+{
+    // Get doctor and their appointment limit
+    $doctor = Doctor::where('user_id', $currentAppointment->doctor_user_id)->first();
+    
+    if (!$doctor) {
+        throw new Exception('Doctor not found');
+    }
+
+    $maxAppointments = $doctor->getMaxPatientAppointments();
+
+    // ✅ EXCLUDE: Current appointment from count since we're rescheduling it
+    $upcomingCount = Appointment::where('patient_user_id', $patient->id)
+        ->where('doctor_user_id', $doctor->user_id)
+        ->where('id', '!=', $currentAppointment->id) // ✅ EXCLUDE current appointment
+        ->where('appointment_datetime_start', '>', now())
+        ->whereIn('status', [
+            Appointment::STATUS_SCHEDULED,
+            Appointment::STATUS_CONFIRMED
+        ])
+        ->count();
+
+    if ($upcomingCount >= $maxAppointments) {
+        throw new Exception("You cannot have more than {$maxAppointments} upcoming appointments with {$doctor->user->name}");
+    }
+
+    // ✅ EXCLUDE: Current appointment when checking same-day bookings
+    $appointmentDate = Carbon::parse($newTimeData['appointment_datetime_start'])->toDateString();
+    $sameDay = Appointment::where('patient_user_id', $patient->id)
+        ->where('doctor_user_id', $doctor->user_id)
+        ->where('id', '!=', $currentAppointment->id) // ✅ EXCLUDE current appointment
+        ->whereDate('appointment_datetime_start', $appointmentDate)
+        ->whereNotIn('status', [
+            Appointment::STATUS_CANCELLED_BY_PATIENT,
+            Appointment::STATUS_CANCELLED_BY_CLINIC,
+            Appointment::STATUS_COMPLETED
+        ])
+        ->exists();
+
+    if ($sameDay) {
+        throw new Exception("You already have an appointment with {$doctor->user->name} on this date");
+    }
+
+    // Check minimum booking notice (2 hours)
+    $appointmentTime = Carbon::parse($newTimeData['appointment_datetime_start']);
+    if ($appointmentTime->lessThan(now()->addHours(2))) {
+        throw new Exception('Appointments must be rescheduled at least 2 hours in advance');
+    }
+
+    // ✅ ADDITIONAL: Check if new time slot is available
+    $this->validateTimeSlotAvailability($doctor->user_id, $newTimeData, $currentAppointment->id);
+}
+
+/**
+ * ✅ NEW METHOD: Check if the requested time slot is available
+ */
+private function validateTimeSlotAvailability(int $doctorId, array $timeData, int $excludeAppointmentId = null): void
+{
+    $startTime = Carbon::parse($timeData['appointment_datetime_start']);
+    $endTime = Carbon::parse($timeData['appointment_datetime_end']);
+
+    // Check for conflicting appointments
+    $conflictQuery = Appointment::where('doctor_user_id', $doctorId)
+        ->where(function($query) use ($startTime, $endTime) {
+            $query->where(function($q) use ($startTime, $endTime) {
+                // New appointment starts during existing appointment
+                $q->where('appointment_datetime_start', '<=', $startTime)
+                  ->where('appointment_datetime_end', '>', $startTime);
+            })
+            ->orWhere(function($q) use ($startTime, $endTime) {
+                // New appointment ends during existing appointment
+                $q->where('appointment_datetime_start', '<', $endTime)
+                  ->where('appointment_datetime_end', '>=', $endTime);
+            })
+            ->orWhere(function($q) use ($startTime, $endTime) {
+                // New appointment completely contains existing appointment
+                $q->where('appointment_datetime_start', '>=', $startTime)
+                  ->where('appointment_datetime_end', '<=', $endTime);
+            });
+        })
+        ->whereNotIn('status', [
+            Appointment::STATUS_CANCELLED_BY_PATIENT,
+            Appointment::STATUS_CANCELLED_BY_CLINIC
+        ]);
+
+    // Exclude current appointment if rescheduling
+    if ($excludeAppointmentId) {
+        $conflictQuery->where('id', '!=', $excludeAppointmentId);
+    }
+
+    if ($conflictQuery->exists()) {
+        throw new Exception('The requested time slot is not available. Please choose a different time.');
+    }
+}
 }
