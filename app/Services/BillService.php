@@ -60,10 +60,17 @@ class BillService
      * @param int $id
      * @return Bill|null
      */
-    public function getBillById(int $id): ?Bill
+    public function getBillById(int $id, array $relations = []): ?Bill
     {
-        return $this->billRepository->findById($id, ['patient', 'doctor', 'items']);
-    }
+        // Define default relations that are almost always needed for a single bill view
+    // Ensure 'doctor.doctor' is loaded to get the specialty from the Doctor model
+    $defaultRelations = ['patient.user', 'doctor.doctor', 'items'];
+    // Merge default relations with any additional specific relations requested
+    $allRelations = array_unique(array_merge($defaultRelations, $relations));
+    
+    return $this->billRepository->findById($id, $allRelations);
+}
+    
     
     /**
      * Create a new bill with its items

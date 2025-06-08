@@ -17,6 +17,7 @@ use App\Services\BillService;
 use App\Services\DateFilterService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
+ 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -49,7 +50,7 @@ class BillController extends Controller
     /**
      * Display a listing of the bills.
      *
-     * @param Request $request
+     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
@@ -268,16 +269,23 @@ class BillController extends Controller
         try {
             // Verify that the authenticated user owns this bill
             $user = Auth::user();
-            $patient = Patient::where('user_id', $user->id)->firstOrFail();
+            $patient = Patient::where('user_id', $user->id)->first();
             
+               if (!$patient) {
+            return $this->error('Patient profile not found for the authenticated user.', 403);
+        }
             if ($bill->patient_id !== $patient->id) {
                 return $this->error('You are not authorized to view this bill.', 403);
             }
             
-            return $this->success(new BillResource($bill->load(['doctor', 'items'])));
-        } catch (\Exception $e) {
-            return $this->error('Failed to retrieve bill: ' . $e->getMessage(), 500);
-        }
+            return $this->success(new BillResource($bill->load(['doctor.doctor', 'items', 'patient.user'])));
+       } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        // This catch block might be for Patient::where(...)->firstOrFail() if you use it
+        return $this->error('Resource not found or patient profile missing.', 404);
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('Error in viewBill: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+        return $this->error('Failed to retrieve bill.', 500); // Simplified error message
+    }
     }
     
     /**
