@@ -18,7 +18,9 @@ return new class extends Migration
             
             // Job tracking
             $table->string('job_id')->unique(); // Laravel queue job ID
+            $table->string('queue_job_id')->nullable(); // Queue job ID for tracking
             $table->enum('reminder_type', ['24h', '2h', 'manual', 'custom'])->default('24h');
+            $table->enum('channel', ['email', 'sms', 'push'])->default('email');
             $table->timestamp('scheduled_for');
             
             // Status tracking
@@ -30,6 +32,7 @@ return new class extends Migration
             $table->integer('attempts')->default(0);
             $table->integer('max_attempts')->default(3);
             $table->timestamp('last_attempted_at')->nullable();
+            $table->timestamp('executed_at')->nullable(); // Add executed_at field
             $table->timestamp('failed_at')->nullable();
             
             // Metadata

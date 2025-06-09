@@ -42,6 +42,9 @@ class ReminderNotificationService
                 'message_id' => $result['message_id'] ?? null
             ]);
 
+            // Update appointment model fields for backwards compatibility
+            $this->updateAppointmentReminderFields($appointment, $channel);
+
             return [
                 'success' => true,
                 'channel' => $channel,
@@ -81,10 +84,11 @@ class ReminderNotificationService
             'user' => $user,
             'appointment' => $appointment,
             'reminder_type' => $reminderType,
+            'reminderType' => $reminderType, // Add camelCase version for Blade template
             'custom_message' => $data['custom_message'] ?? null,
-            'appointment_date' => $appointment->appointment_date,
-            'formatted_date' => $appointment->appointment_date->format('l, F j, Y'),
-            'formatted_time' => $appointment->appointment_date->format('g:i A'),
+            'appointment_date' => $appointment->appointment_datetime_start,
+            'formatted_date' => $appointment->appointment_datetime_start->format('l, F j, Y'),
+            'formatted_time' => $appointment->appointment_datetime_start->format('g:i A'),
             'time_until' => $this->getTimeUntilAppointment($appointment),
             'clinic_info' => $this->getClinicInfo(),
             'cancellation_link' => $this->generateCancellationLink($appointment),
@@ -103,7 +107,7 @@ class ReminderNotificationService
         });
 
         return [
-            'message_id' => Mail::getQueuedMessages()[0]['id'] ?? uniqid('email_'),
+            'message_id' => uniqid('email_' . time() . '_'),
             'metadata' => [
                 'template' => $template,
                 'subject' => $subject,
@@ -166,7 +170,7 @@ class ReminderNotificationService
             'data' => [
                 'appointment_id' => $appointment->id,
                 'reminder_type' => $reminderType,
-                'appointment_date' => $appointment->appointment_date->toISOString(),
+                'appointment_date' => $appointment->appointment_datetime_start->toISOString(),
                 'action' => 'view_appointment'
             ],
             'click_action' => route('appointments.show', $appointment->id)
@@ -201,7 +205,7 @@ class ReminderNotificationService
                 'message' => $message,
                 'appointment_id' => $appointment->id,
                 'reminder_type' => $reminderType,
-                'appointment_date' => $appointment->appointment_date->toISOString(),
+                'appointment_date' => $appointment->appointment_datetime_start->toISOString(),
                 'action_url' => route('appointments.show', $appointment->id),
                 'priority' => $data['priority'] ?? 'normal'
             ],
@@ -245,15 +249,8 @@ class ReminderNotificationService
      */
     private function getEmailTemplate(string $reminderType): string
     {
-        $templates = [
-            '24h' => 'emails.reminders.24-hour',
-            '2h' => 'emails.reminders.2-hour', 
-            '1h' => 'emails.reminders.1-hour',
-            'manual' => 'emails.reminders.manual',
-            'custom' => 'emails.reminders.custom'
-        ];
-
-        return $templates[$reminderType] ?? 'emails.reminders.default';
+        // Use the generic appointment reminder template for all reminder types
+        return 'emails.reminders.appointment-reminder';
     }
 
     /**
@@ -266,14 +263,14 @@ class ReminderNotificationService
         }
 
         $timeUntil = $this->getTimeUntilAppointment($appointment);
-        $date = $appointment->appointment_date->format('M j, Y');
-        $time = $appointment->appointment_date->format('g:i A');
+        $date = $appointment->appointment_datetime_start->format('M j, Y');
+        $time = $appointment->appointment_datetime_start->format('g:i A');
 
         $messages = [
-            '24h' => "Hi {$user->name}, reminder: You have an appointment tomorrow ({$date}) at {$time}. Reply STOP to opt out.",
-            '2h' => "Hi {$user->name}, your appointment is in 2 hours ({$time}). See you soon! Reply STOP to opt out.",
-            '1h' => "Hi {$user->name}, your appointment is in 1 hour ({$time}). Please arrive 10 minutes early. Reply STOP to opt out.",
-            'manual' => "Hi {$user->name}, appointment reminder: {$date} at {$time}. Reply STOP to opt out."
+            '24h' => "Hi {$user->name}! 👋 ASIO Reminder: You have an appointment tomorrow ({$date}) at {$time}. Reply STOP to opt out.",
+            '2h' => "Hi {$user->name}! ⏰ ASIO: Your appointment is in 2 hours ({$time}). See you soon! Reply STOP to opt out.",
+            '1h' => "Hi {$user->name}! 🏥 ASIO: Your appointment is in 1 hour ({$time}). Please arrive 10 minutes early. Reply STOP to opt out.",
+            'manual' => "Hi {$user->name}! 📅 ASIO appointment reminder: {$date} at {$time}. Reply STOP to opt out."
         ];
 
         return $messages[$reminderType] ?? "Appointment reminder: {$date} at {$time}. Reply STOP to opt out.";
@@ -303,8 +300,8 @@ class ReminderNotificationService
             return $data['custom_message'];
         }
 
-        $date = $appointment->appointment_date->format('M j');
-        $time = $appointment->appointment_date->format('g:i A');
+        $date = $appointment->appointment_datetime_start->format('M j');
+        $time = $appointment->appointment_datetime_start->format('g:i A');
 
         $messages = [
             '24h' => "Your appointment is tomorrow at {$time}",
@@ -337,7 +334,7 @@ class ReminderNotificationService
      */
     private function getTimeUntilAppointment(Appointment $appointment): string
     {
-        return $appointment->appointment_date->diffForHumans();
+        return $appointment->appointment_datetime_start->diffForHumans();
     }
 
     /**
@@ -346,11 +343,11 @@ class ReminderNotificationService
     private function getClinicInfo(): array
     {
         return [
-            'name' => config('app.name', 'Our Clinic'),
+            'name' => 'ASIO Healthcare Platform',
             'address' => config('clinic.address', ''),
-            'phone' => config('clinic.phone', ''),
-            'email' => config('clinic.email', config('mail.from.address')),
-            'website' => config('app.url')
+            'phone' => config('clinic.phone', '(555) 123-4567'),
+            'email' => config('clinic.email', 'support@asio.com'),
+            'website' => config('app.url', 'https://asio.healthcare')
         ];
     }
 
@@ -359,10 +356,15 @@ class ReminderNotificationService
      */
     private function generateCancellationLink(Appointment $appointment): string
     {
-        return route('appointments.cancel', [
-            'appointment' => $appointment->id,
-            'token' => encrypt($appointment->id . '|' . $appointment->user_id)
-        ]);
+        try {
+            return route('appointments.cancel', [
+                'appointment' => $appointment->id,
+                'token' => encrypt($appointment->id . '|' . $appointment->patient_user_id)
+            ]);
+        } catch (\Exception $e) {
+            // Fallback to a generic URL if route doesn't exist
+            return config('app.url') . '/appointments/' . $appointment->id . '/cancel';
+        }
     }
 
     /**
@@ -370,10 +372,15 @@ class ReminderNotificationService
      */
     private function generateRescheduleLink(Appointment $appointment): string
     {
-        return route('appointments.reschedule', [
-            'appointment' => $appointment->id,
-            'token' => encrypt($appointment->id . '|' . $appointment->user_id)
-        ]);
+        try {
+            return route('appointments.reschedule', [
+                'appointment' => $appointment->id,
+                'token' => encrypt($appointment->id . '|' . $appointment->patient_user_id)
+            ]);
+        } catch (\Exception $e) {
+            // Fallback to a generic URL if route doesn't exist
+            return config('app.url') . '/appointments/' . $appointment->id . '/reschedule';
+        }
     }
 
     /**
@@ -387,8 +394,8 @@ class ReminderNotificationService
         $ical .= "BEGIN:VEVENT\r\n";
         $ical .= "UID:" . $appointment->id . "@" . config('app.url') . "\r\n";
         $ical .= "DTSTAMP:" . now()->format('Ymd\THis\Z') . "\r\n";
-        $ical .= "DTSTART:" . $appointment->appointment_date->format('Ymd\THis\Z') . "\r\n";
-        $ical .= "DTEND:" . $appointment->appointment_date->addHour()->format('Ymd\THis\Z') . "\r\n";
+        $ical .= "DTSTART:" . $appointment->appointment_datetime_start->format('Ymd\THis\Z') . "\r\n";
+        $ical .= "DTEND:" . $appointment->appointment_datetime_end->format('Ymd\THis\Z') . "\r\n";
         $ical .= "SUMMARY:Medical Appointment\r\n";
         $ical .= "DESCRIPTION:Your scheduled appointment\r\n";
         $ical .= "LOCATION:" . config('clinic.address', '') . "\r\n";
@@ -470,5 +477,32 @@ class ReminderNotificationService
         }
 
         return $results;
+    }
+
+    /**
+     * Update appointment model reminder fields for backwards compatibility
+     */
+    private function updateAppointmentReminderFields(Appointment $appointment, string $channel): void
+    {
+        try {
+            // Only update on the first successful reminder send
+            if (!$appointment->reminder_sent) {
+                $appointment->update([
+                    'reminder_sent' => true,
+                    'reminder_sent_at' => now()
+                ]);
+
+                Log::info("Updated appointment reminder fields", [
+                    'appointment_id' => $appointment->id,
+                    'channel' => $channel,
+                    'reminder_sent_at' => now()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to update appointment reminder fields", [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

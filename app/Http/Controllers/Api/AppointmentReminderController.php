@@ -42,7 +42,7 @@ class AppointmentReminderController extends Controller
                 ], 403);
             }
 
-            $reminders = $this->reminderService->getAppointmentReminders($appointment);
+            $reminders = $this->reminderService->getAppointmentReminders($appointment->id);
 
             return response()->json([
                 'success' => true,

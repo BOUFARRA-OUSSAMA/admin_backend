@@ -43,8 +43,25 @@ class ScheduleAppointmentReminders implements ShouldQueue
                 'appointment_id' => $this->appointmentId,
             ]);
 
-            // Get appointment with relationships
-            $appointment = Appointment::findOrFail($this->appointmentId);
+            // Get appointment with relationships, including soft-deleted ones
+            $appointment = Appointment::withTrashed()->find($this->appointmentId);
+            
+            // Check if appointment exists
+            if (!$appointment) {
+                Log::warning("Appointment not found for reminder scheduling", [
+                    'appointment_id' => $this->appointmentId,
+                ]);
+                return;
+            }
+            
+            // Check if appointment is soft-deleted
+            if ($appointment->trashed()) {
+                Log::info("Skipping reminder scheduling for soft-deleted appointment", [
+                    'appointment_id' => $this->appointmentId,
+                    'deleted_at' => $appointment->deleted_at,
+                ]);
+                return;
+            }
 
             // Check if appointment is valid for scheduling reminders
             if (!$this->isAppointmentValidForScheduling($appointment)) {
@@ -82,10 +99,26 @@ class ScheduleAppointmentReminders implements ShouldQueue
      */
     public function failed(Exception $exception): void
     {
-        Log::error("Reminder scheduling job permanently failed", [
-            'appointment_id' => $this->appointmentId,
-            'error' => $exception->getMessage(),
-        ]);
+        // Check if it's a soft-deleted appointment issue
+        $appointment = Appointment::withTrashed()->find($this->appointmentId);
+        
+        if (!$appointment) {
+            Log::error("Reminder scheduling job failed - appointment not found", [
+                'appointment_id' => $this->appointmentId,
+                'error' => $exception->getMessage(),
+            ]);
+        } elseif ($appointment->trashed()) {
+            Log::info("Reminder scheduling job failed - appointment was soft-deleted", [
+                'appointment_id' => $this->appointmentId,
+                'deleted_at' => $appointment->deleted_at,
+                'error' => $exception->getMessage(),
+            ]);
+        } else {
+            Log::error("Reminder scheduling job permanently failed", [
+                'appointment_id' => $this->appointmentId,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -104,8 +137,8 @@ class ScheduleAppointmentReminders implements ShouldQueue
             return false;
         }
 
-        // Don't schedule if appointment is too soon (less than 30 minutes)
-        if ($appointment->appointment_datetime_start->diffInMinutes(now()) < 30) {
+        // Don't schedule if appointment is too soon (less than 30 minutes in the future)
+        if (now()->diffInMinutes($appointment->appointment_datetime_start) < 30) {
             return false;
         }
 
@@ -245,9 +278,8 @@ class ScheduleAppointmentReminders implements ShouldQueue
                 'priority' => 'normal'
             ];
 
-            // Calculate delay
-            $delay = $scheduledFor->diffInSeconds(now());
-            if ($delay <= 0) {
+            // Check if the reminder time is in the future
+            if ($scheduledFor->isPast()) {
                 Log::warning("Cannot schedule reminder in the past", [
                     'appointment_id' => $appointment->id,
                     'scheduled_for' => $scheduledFor,
@@ -256,6 +288,9 @@ class ScheduleAppointmentReminders implements ShouldQueue
                 ]);
                 return;
             }
+
+            // Calculate delay in seconds
+            $delay = $scheduledFor->diffInSeconds(now());
 
             // Dispatch the job with delay
             $job = SendAppointmentReminder::dispatch(
@@ -272,7 +307,7 @@ class ScheduleAppointmentReminders implements ShouldQueue
             // Record the scheduled job
             ScheduledReminderJob::create([
                 'appointment_id' => $appointment->id,
-                'queue_job_id' => $trackingId, // Use tracking ID instead of job ID
+                'job_id' => $trackingId, // Use tracking ID as job ID
                 'reminder_type' => $reminderType,
                 'channel' => $channel,
                 'scheduled_for' => $scheduledFor,

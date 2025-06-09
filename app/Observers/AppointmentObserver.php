@@ -23,8 +23,9 @@ class AppointmentObserver
     public function created(Appointment $appointment): void
     {
         try {
-            // Only schedule reminders for confirmed appointments
-            if ($appointment->status !== 'confirmed') {
+            // Only schedule reminders for confirmed or scheduled appointments
+            $validStatuses = ['confirmed', 'scheduled'];
+            if (!in_array($appointment->status, $validStatuses)) {
                 Log::info("Skipping reminder scheduling for appointment {$appointment->id} - status: {$appointment->status}");
                 return;
             }

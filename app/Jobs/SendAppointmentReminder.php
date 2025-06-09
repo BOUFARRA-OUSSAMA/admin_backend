@@ -28,6 +28,7 @@ class SendAppointmentReminder implements ShouldQueue
     protected $channel;
     protected $reminderType;
     protected $reminderData;
+    protected $reminderLogId;
 
     /**
      * Create a new job instance.
@@ -44,6 +45,7 @@ class SendAppointmentReminder implements ShouldQueue
         $this->channel = $channel;
         $this->reminderType = $reminderType;
         $this->reminderData = $reminderData;
+        $this->reminderLogId = null; // Initialize as null
     }
 
     /**
@@ -63,9 +65,32 @@ class SendAppointmentReminder implements ShouldQueue
                 'tracking_id' => $trackingId,
             ]);
 
-            // Get appointment with relationships
-            $appointment = Appointment::with(['patient', 'doctor'])
-                ->findOrFail($this->appointmentId);
+            // Get appointment with relationships, including soft-deleted ones
+            $appointment = Appointment::withTrashed()
+                ->with(['patient', 'doctor'])
+                ->find($this->appointmentId);
+                
+            // Check if appointment exists
+            if (!$appointment) {
+                Log::warning("Appointment not found for reminder sending", [
+                    'appointment_id' => $this->appointmentId,
+                    'user_id' => $this->userId,
+                    'tracking_id' => $trackingId,
+                ]);
+                return;
+            }
+            
+            // Check if appointment is soft-deleted
+            if ($appointment->trashed()) {
+                Log::info("Skipping reminder for soft-deleted appointment", [
+                    'appointment_id' => $this->appointmentId,
+                    'user_id' => $this->userId,
+                    'deleted_at' => $appointment->deleted_at,
+                    'tracking_id' => $trackingId,
+                ]);
+                $this->markJobAsCancelled('Appointment was soft-deleted');
+                return;
+            }
                 
             // Get the user for this reminder
             $user = User::findOrFail($this->userId);
@@ -79,15 +104,22 @@ class SendAppointmentReminder implements ShouldQueue
             // Get or create reminder log
             $reminderLog = $this->getOrCreateReminderLog($appointment);
 
+            // Get the user
+            $user = User::find($this->userId);
+            if (!$user) {
+                throw new \Exception("User not found: {$this->userId}");
+            }
+
             // Update scheduled job status
             $this->updateScheduledJobStatus('processing');
 
             // Send the reminder
             $result = $notificationService->sendReminder(
                 $appointment,
-                $this->reminderType,
+                $user,
                 $this->channel,
-                $reminderLog
+                $this->reminderType,
+                $this->reminderData
             );
 
             if ($result['success']) {

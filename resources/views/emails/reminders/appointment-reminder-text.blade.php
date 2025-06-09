@@ -1,64 +1,87 @@
-{{ config('app.name', 'Healthcare') }} - Appointment Reminder
+================================================
+     ASIO - Advanced Healthcare Platform
+================================================
 
-Hello {{ $user->name ?? $appointment->patient->name ?? 'Patient' }},
+Hello {{ $user->name ?? $appointment->patient->name ?? 'Patient' }}! 👋
 
-This is a {{ $reminderType === '24h' ? '24 hour' : ($reminderType === '2h' ? '2 hour' : '') }} reminder about your upcoming medical appointment.
+We hope this message finds you well. This is a friendly reminder about your upcoming medical appointment with our healthcare team.
 
-APPOINTMENT DETAILS
-===================
-Date: {{ $appointment->appointment_datetime_start->format('l, F j, Y') }}
-Time: {{ $appointment->appointment_datetime_start->format('g:i A') }}
-@if($appointment->doctor)
-Doctor: Dr. {{ $appointment->doctor->name }}
+@if($reminderType === '24h')
+⏰ 24 HOUR REMINDER
+@elseif($reminderType === '2h')
+⏰ 2 HOUR REMINDER  
+@elseif($reminderType === '1h')
+⏰ 1 HOUR REMINDER
 @else
-Doctor: To be assigned
+📅 APPOINTMENT REMINDER
 @endif
-Type: {{ ucfirst($appointment->type ?? 'General Consultation') }}
+
+================================================
+          APPOINTMENT DETAILS
+================================================
+
+📅 Date: {{ $appointment->appointment_datetime_start->format('l, F j, Y') }}
+🕐 Time: {{ $appointment->appointment_datetime_start->format('g:i A') }}
+⏳ Time Until: {{ $time_until ?? $appointment->appointment_datetime_start->diffForHumans() }}
+
+👨‍⚕️ Healthcare Provider: 
+@if($appointment->doctor)
+   Dr. {{ $appointment->doctor->name }}
+@else
+   Will be assigned
+@endif
+
+🏥 Appointment Type: {{ ucfirst($appointment->type ?? 'General Consultation') }}
+
 @if($appointment->reason_for_visit)
-Reason: {{ $appointment->reason_for_visit }}
-@endif
-Status: {{ ucfirst($appointment->status) }}
-Duration: {{ $appointment->appointment_datetime_start->diffInMinutes($appointment->appointment_datetime_end) }} minutes
-
-@if($customMessage ?? false)
-SPECIAL INSTRUCTIONS
-===================
-{{ $customMessage }}
-
-@endif
-CLINIC INFORMATION
-==================
-Phone: {{ $clinicPhone ?? config('app.phone', '(555) 123-4567') }}
-Email: {{ $clinicEmail ?? config('app.email', 'contact@healthcare.com') }}
-@if($clinicAddress ?? false)
-Address: {{ $clinicAddress }}
+📋 Purpose of Visit: {{ $appointment->reason_for_visit }}
 @endif
 
-IMPORTANT REMINDERS
-==================
-- Please arrive 15 minutes early for check-in
-- Bring a valid ID and insurance card
-- Bring a list of current medications
+⏱️ Duration: {{ $appointment->appointment_datetime_start->diffInMinutes($appointment->appointment_datetime_end ?? $appointment->appointment_datetime_start->addMinutes(30)) }} minutes
+
+@if($custom_message ?? false)
+================================================
+          SPECIAL INSTRUCTIONS
+================================================
+📝 {{ $custom_message }}
+@endif
+
+================================================
+          IMPORTANT REMINDERS
+================================================
+✅ Please arrive 15 minutes early for registration and check-in
+✅ Bring a valid government-issued photo ID
+✅ Bring your insurance card and any required copayment
+✅ Bring a current list of all medications you're taking
 @if($appointment->type === 'follow_up')
-- Bring any test results or reports from previous visits
+✅ Bring any test results, lab work, or imaging from other providers
+@endif
+✅ Wear comfortable, loose-fitting clothing for your examination
+
+================================================
+          CONTACT INFORMATION
+================================================
+📞 Phone: {{ $clinic_info['phone'] ?? '(555) 123-4567' }}
+✉️ Email: {{ $clinic_info['email'] ?? 'support@asio.com' }}
+@if($clinic_info['address'] ?? false)
+📍 Address: {{ $clinic_info['address'] }}
+@endif
+🌐 Website: {{ $clinic_info['website'] ?? config('app.url') }}
+
+================================================
+Need to make changes?
+Please contact us at least 24 hours in advance to reschedule or cancel your appointment to avoid any fees.
+
+@if($reschedule_link ?? false)
+🔗 Reschedule: {{ $reschedule_link }}
+@endif
+@if($cancellation_link ?? false)
+🔗 Cancel: {{ $cancellation_link }}
 @endif
 
-If you need to reschedule or cancel your appointment, please contact us at least 24 hours in advance.
+================================================
+This is an automated reminder from ASIO Healthcare Platform.
+Please do not reply directly to this email.
 
-@if($confirmationUrl ?? false)
-Confirm your appointment: {{ $confirmationUrl }}
-@endif
-@if($rescheduleUrl ?? false)
-Reschedule your appointment: {{ $rescheduleUrl }}
-@endif
-@if($cancelUrl ?? false)
-Cancel your appointment: {{ $cancelUrl }}
-@endif
-
-This is an automated reminder. Please do not reply to this email.
-
-© {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
-@if($unsubscribeUrl ?? false)
-
-Unsubscribe from reminders: {{ $unsubscribeUrl }}
-@endif
+© {{ date('Y') }} ASIO. All rights reserved.
+================================================
