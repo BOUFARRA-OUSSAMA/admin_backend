@@ -103,7 +103,12 @@ class User extends Authenticatable implements JWTSubject
             return $this->roles->where('code', $role)->count() > 0;
         }
 
-        return $role->intersect($this->roles)->count() > 0;
+        // Convert array to collection if needed
+        if (is_array($role)) {
+            $role = collect($role);
+        }
+
+        return $role->intersect($this->roles->pluck('code'))->count() > 0;
     }
 
   
@@ -131,7 +136,12 @@ class User extends Authenticatable implements JWTSubject
             return $this->getAllPermissions()->where('code', $permission)->count() > 0;
         }
 
-        return $permission->intersect($this->getAllPermissions())->count() > 0;
+        // Convert array to collection if needed
+        if (is_array($permission)) {
+            $permission = collect($permission);
+        }
+
+        return $permission->intersect($this->getAllPermissions()->pluck('code'))->count() > 0;
     }
 
     /**

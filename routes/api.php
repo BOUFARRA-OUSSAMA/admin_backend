@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientAppointmentController;
 use App\Http\Controllers\Api\DoctorAppointmentController;
 use App\Http\Controllers\Api\PersonalInfoController;
+use App\Http\Controllers\Api\ReminderController;
+use App\Http\Controllers\Api\AppointmentReminderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -227,6 +229,52 @@ Route::group(['middleware' => ['jwt.auth', 'permission:ai:use'], 'prefix' => 'ai
 Route::group(['middleware' => ['jwt.auth', 'permission:patients:view-medical']], function () {
     Route::get('/patients/{patient}/ai-analyses', [AiDiagnosticController::class, 'getPatientAnalyses']);
     Route::get('/ai-analyses/{analysis}', [AiDiagnosticController::class, 'getAnalysis']);
+});
+
+// REMINDER MANAGEMENT ROUTES
+Route::group(['middleware' => ['jwt.auth']], function () {
+    
+    // Main Reminder Routes
+    Route::prefix('reminders')->group(function () {
+        
+        // User reminder settings (All authenticated users)
+        Route::get('/settings', [ReminderController::class, 'getReminderSettings']);
+        Route::put('/settings', [ReminderController::class, 'updateReminderSettings']);
+        
+        // Patient-specific routes
+        Route::get('/upcoming', [ReminderController::class, 'getUpcomingReminders']);
+        Route::post('/opt-out', [ReminderController::class, 'optOutReminders']);
+        
+        // Admin/Staff routes for reminder management
+        Route::group(['middleware' => ['permission:appointments:manage']], function () {
+            Route::post('/schedule', [ReminderController::class, 'scheduleReminders']);
+            Route::post('/cancel', [ReminderController::class, 'cancelReminders']);
+            Route::post('/test', [ReminderController::class, 'sendTestReminder']);
+            Route::get('/logs', [ReminderController::class, 'getReminderLogs']);
+            Route::get('/analytics', [ReminderController::class, 'getReminderAnalytics']);
+            Route::post('/bulk', [ReminderController::class, 'bulkReminderOperation']);
+        });
+    });
+
+    // Appointment-specific Reminder Routes
+    Route::prefix('appointments/{appointment}/reminders')->group(function () {
+        
+        // View reminders for appointment (appointment owner or staff)
+        Route::get('/', [AppointmentReminderController::class, 'getAppointmentReminders']);
+        Route::get('/status', [AppointmentReminderController::class, 'getReminderDeliveryStatus']);
+        
+        // Patient routes (appointment owner only)
+        Route::put('/preferences', [AppointmentReminderController::class, 'updateReminderPreferences']);
+        Route::post('/{reminderLog}/acknowledge', [AppointmentReminderController::class, 'acknowledgeReminder']);
+        
+        // Admin/Staff routes for managing appointment reminders
+        Route::group(['middleware' => ['permission:appointments:manage']], function () {
+            Route::post('/custom', [AppointmentReminderController::class, 'scheduleCustomReminder']);
+            Route::delete('/{reminder}', [AppointmentReminderController::class, 'cancelReminder']);
+            Route::put('/{reminder}/reschedule', [AppointmentReminderController::class, 'rescheduleReminder']);
+            Route::post('/test', [AppointmentReminderController::class, 'testReminderDelivery']);
+        });
+    });
 });
 
 // Test route
