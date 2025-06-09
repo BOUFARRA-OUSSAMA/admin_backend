@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Facades\LogActivity;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
+ 
 
 
 class BillService
@@ -426,28 +428,83 @@ class BillService
      * @param Bill $bill
      * @return string The path to the stored PDF
      */
+    // protected function generatePdf(Bill $bill): string
+    // {
+    //     // Ensure relationships are loaded
+    //     if (!$bill->relationLoaded('patient')) {
+    //         $bill->load('patient');
+    //     }
+        
+    //     if (!$bill->relationLoaded('doctor')) {
+    //         $bill->load('doctor');
+    //     }
+        
+    //     if (!$bill->relationLoaded('items')) {
+    //         $bill->load('items');
+    //     }
+        
+    //     // In a real implementation, you would use PDF generation logic
+    //     // For now, this is a placeholder
+    //     $filename = 'bills/bill-' . $bill->bill_number . '.pdf';
+        
+    //     // Simulate PDF creation
+    //     Storage::put($filename, 'Placeholder for bill PDF');
+        
+    //     return $filename;
+    // }
+
+/**
+     * Generate a PDF for a bill (general purpose, might store it).
+     * This method needs to be updated to use DomPDF properly if it's intended for general PDF generation.
+     * For the patient receipt, we'll use a dedicated method below.
+     *
+     * @param Bill $bill
+     * @return string The path to the stored PDF
+     */
     protected function generatePdf(Bill $bill): string
     {
-        // Ensure relationships are loaded
-        if (!$bill->relationLoaded('patient')) {
-            $bill->load('patient');
-        }
+        // Ensure relationships are loaded for the PDF view
+        $bill->loadMissing(['patient.user', 'doctor.user', 'items']);
+
+        // Generate PDF content using a Blade view
+        // You might have a different view for general bills, e.g., 'pdfs.bill_details'
+        $pdf = Pdf::loadView('pdfs.patient_receipt', ['bill' => $bill]); // Using patient_receipt view for now
+
+        $filename = 'bills/bill-' . $bill->bill_number . '-' . time() . '.pdf';
         
-        if (!$bill->relationLoaded('doctor')) {
-            $bill->load('doctor');
-        }
-        
-        if (!$bill->relationLoaded('items')) {
-            $bill->load('items');
-        }
-        
-        // In a real implementation, you would use PDF generation logic
-        // For now, this is a placeholder
-        $filename = 'bills/bill-' . $bill->bill_number . '.pdf';
-        
-        // Simulate PDF creation
-        Storage::put($filename, 'Placeholder for bill PDF');
+        // Store the PDF
+        Storage::put($filename, $pdf->output());
         
         return $filename;
     }
+
+ /**
+     * Generate and stream a PDF receipt for a patient's bill.
+     *
+     * @param Bill $bill
+     * @return \Illuminate\Http\Response
+     */
+    public function generatePatientReceiptPdf(Bill $bill)
+    {
+        // Ensure all necessary relationships are loaded for the PDF view
+        // The 'doctor.doctor' relation is crucial for specialty as per previous fixes.
+        $bill->loadMissing(['patient.user', 'doctor.doctor', 'items']);
+
+        // Data to pass to the view
+        $data = [
+            'bill' => $bill,
+            'patientName' => $bill->patient && $bill->patient->user ? $bill->patient->user->name : 'N/A',
+            'doctorName' => $bill->doctor ? $bill->doctor->name : 'N/A', // $bill->doctor is a User model
+            'doctorSpecialty' => $bill->doctor && $bill->doctor->doctor ? $bill->doctor->doctor->specialty : 'N/A',
+        ];
+       // Generate PDF content using a Blade view
+        $pdf = Pdf::loadView('pdfs.patient_receipt', $data);
+        
+        // Stream the PDF to the browser for download
+        return $pdf->download('receipt-' . $bill->bill_number . '.pdf');
+    } 
+ 
+
+
+
 }

@@ -17,7 +17,7 @@ use App\Services\BillService;
 use App\Services\DateFilterService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\Request;
- 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -310,4 +310,45 @@ class BillController extends Controller
             return $this->error('Failed to download PDF: ' . $e->getMessage(), 500);
         }
     }
+
+
+
+/**
+     * Download PDF receipt for a specific bill (for patient access).
+     *
+     * @param Bill $bill
+     * @return \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
+     */
+    public function downloadBillReceiptForPatient(Bill $bill)
+    {
+        try {
+            $user = Auth::user();
+            $patient = Patient::where('user_id', $user->id)->first();
+
+            if (!$patient) {
+                return $this->error('Patient profile not found for the authenticated user.', 403);
+            }
+
+            if ($bill->patient_id !== $patient->id) {
+                return $this->error('You are not authorized to download this receipt.', 403);
+                 }
+
+            // Delegate PDF generation and download to the service
+            return $this->billService->generatePatientReceiptPdf($bill);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to download patient bill receipt: ' . $e->getMessage(), [
+                'bill_id' => $bill->id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->error('Failed to download receipt: ' . $e->getMessage(), 500);
+        }
+    }
+
+
+
+
+
+
 }
