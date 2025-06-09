@@ -85,9 +85,20 @@ class PermissionSeeder extends Seeder
                 ['name' => 'Create Appointments', 'code' => 'appointments:create'],
                 ['name' => 'Edit Appointments', 'code' => 'appointments:edit'],
                 ['name' => 'Delete Appointments', 'code' => 'appointments:delete'],
-                ['name' => 'Manage All Appointments', 'code' => 'manage_appointments'],
+                ['name' => 'Manage All Appointments', 'code' => 'appointments:manage'],
                 ['name' => 'Confirm Appointments', 'code' => 'appointments:confirm'],
                 ['name' => 'Complete Appointments', 'code' => 'appointments:complete'],
+            ],
+
+            // Reminder Management
+            'reminders' => [
+                ['name' => 'View Reminders', 'code' => 'reminders:view'],
+                ['name' => 'Schedule Reminders', 'code' => 'reminders:schedule'],
+                ['name' => 'Cancel Reminders', 'code' => 'reminders:cancel'],
+                ['name' => 'Send Manual Reminders', 'code' => 'reminders:send-manual'],
+                ['name' => 'Bulk Reminder Operations', 'code' => 'reminders:bulk'],
+                ['name' => 'View Reminder Analytics', 'code' => 'reminders:analytics'],
+                ['name' => 'Manage Reminder Settings', 'code' => 'reminders:manage-settings'],
             ],
         ];
 
@@ -126,7 +137,10 @@ class PermissionSeeder extends Seeder
                 'patients:edit-medical',
                 'ai:use',
                 'bills:view',
-                'bills:create'
+                'bills:create',
+                'reminders:view',
+                'reminders:schedule',
+                'reminders:send-manual'
             ])->pluck('id')->toArray();
 
             $doctorRole->permissions()->sync($doctorPermissions);
@@ -138,7 +152,8 @@ class PermissionSeeder extends Seeder
             $nursePermissions = Permission::whereIn('code', [
                 'patients:view',
                 'patients:view-medical',
-                'ai:use'
+                'ai:use',
+                'reminders:view'
             ])->pluck('id')->toArray();
 
             $nurseRole->permissions()->sync($nursePermissions);
@@ -156,7 +171,13 @@ class PermissionSeeder extends Seeder
                 'bills:create',
                 'bills:edit',
                 'bills:view-patient',
-                'bills:generate-pdf'
+                'bills:generate-pdf',
+                'reminders:view',
+                'reminders:schedule',
+                'reminders:cancel',
+                'reminders:send-manual',
+                'reminders:bulk',
+                'reminders:analytics'
             ])->pluck('id')->toArray();
 
             $receptionistRole->permissions()->sync($receptionistPermissions);

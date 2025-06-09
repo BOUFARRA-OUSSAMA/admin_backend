@@ -11,6 +11,8 @@ use Illuminate\Console\Scheduling\Schedule;
 use App\Console\Commands\CleanupExpiredTokens;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\Appointment;
+use App\Observers\AppointmentObserver;
 use Illuminate\Database\Connectors\PostgresConnector;
 use Illuminate\Support\Facades\Log;
 use PDO;
@@ -91,6 +93,9 @@ class AppServiceProvider extends ServiceProvider
                 $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
             }
         });
+
+        // Register AppointmentObserver for automatic reminder scheduling
+        Appointment::observe(AppointmentObserver::class);
 
         // Add retry logic to handle connection issues (important for serverless DBs on Azure)
         $this->app->extend('db.connector.pgsql', function ($connector, $app) {
