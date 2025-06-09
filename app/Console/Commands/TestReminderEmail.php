@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Jobs\SendAppointmentReminder;
 use App\Models\Appointment;
+use App\Services\ReminderNotificationService;
 
 class TestReminderEmail extends Command
 {
@@ -25,11 +25,11 @@ class TestReminderEmail extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(ReminderNotificationService $notificationService)
     {
-        $appointmentId = $this->argument('appointment_id') ?? 70;
+        $appointmentId = $this->argument('appointment_id') ?? 48;
         
-        $appointment = Appointment::find($appointmentId);
+        $appointment = Appointment::with(['patient', 'doctor'])->find($appointmentId);
         if (!$appointment) {
             $this->error("Appointment {$appointmentId} not found!");
             return 1;
@@ -40,21 +40,26 @@ class TestReminderEmail extends Command
         $this->info("Doctor: {$appointment->doctor->name}");
         $this->info("Date: {$appointment->appointment_datetime_start}");
 
-        // Dispatch the reminder job immediately (no delay)
-        $job = SendAppointmentReminder::dispatch(
-            $appointment->id,
-            $appointment->patient_user_id,
+        // Send reminder directly using the notification service
+        $result = $notificationService->sendReminder(
+            $appointment,
+            $appointment->patient,
             'email',
             '24h',
             [
-                'type' => '24h',
                 'priority' => 'test',
                 'test_mode' => true
             ]
         );
 
-        $this->info("✅ Reminder email job dispatched successfully!");
-        $this->info("Check your email logs and the patient's email inbox.");
+        if ($result['success']) {
+            $this->info("✅ Reminder email sent successfully!");
+            $this->info("Subject: " . ($result['subject'] ?? 'N/A'));
+            $this->info("Message ID: " . ($result['message_id'] ?? 'N/A'));
+        } else {
+            $this->error("❌ Failed to send reminder email: " . ($result['error'] ?? 'Unknown error'));
+            return 1;
+        }
         
         return 0;
     }

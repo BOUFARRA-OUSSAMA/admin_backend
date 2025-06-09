@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Models\Appointment;
-use App\Services\ReminderSchedulingService;
+use App\Services\ReminderService;
 use App\Services\ReminderNotificationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -17,11 +17,11 @@ class SetupReminderSystemTest extends Command
     protected $signature = 'reminder:setup-test {--create-users : Create test users if they don\'t exist}';
     protected $description = 'Set up a complete test environment for the ASIO reminder system';
 
-    protected ReminderSchedulingService $reminderService;
+    protected ReminderService $reminderService;
     protected ReminderNotificationService $notificationService;
 
     public function __construct(
-        ReminderSchedulingService $reminderService,
+        ReminderService $reminderService,
         ReminderNotificationService $notificationService
     ) {
         parent::__construct();
