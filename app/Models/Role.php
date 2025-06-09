@@ -51,6 +51,11 @@ class Role extends Model
             return $this->permissions->where('code', $permission)->count() > 0;
         }
 
-        return $permission->intersect($this->permissions)->count() > 0;
+        // Convert array to collection if needed
+        if (is_array($permission)) {
+            $permission = collect($permission);
+        }
+
+        return $permission->intersect($this->permissions->pluck('code'))->count() > 0;
     }
 }
