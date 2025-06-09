@@ -344,7 +344,7 @@
                         <div class="detail-label">Healthcare Provider</div>
                         <div class="detail-value">
                             @if($appointment->doctor)
-                                Dr. {{ $appointment->doctor->name }}
+                               {{ $appointment->doctor->name }}
                             @else
                                 Will be assigned
                             @endif

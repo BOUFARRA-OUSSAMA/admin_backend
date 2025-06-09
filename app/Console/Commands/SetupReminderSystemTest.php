@@ -10,7 +10,6 @@ use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
 
 class SetupReminderSystemTest extends Command
 {
@@ -32,25 +31,20 @@ class SetupReminderSystemTest extends Command
     public function handle()
     {
         $this->info('🏥 ASIO Reminder System - Complete Test Setup');
-        $this->info('============================================');
-
-        try {
-            // Step 1: Check/Create roles
-            $this->setupRoles();
-
-            // Step 2: Check/Create test users
+        $this->info('============================================');        try {
+            // Step 1: Check/Create test users
             $users = $this->setupTestUsers();
 
-            // Step 3: Create test appointments
+            // Step 2: Create test appointments
             $appointments = $this->createTestAppointments($users);
 
-            // Step 4: Verify reminder scheduling
+            // Step 3: Verify reminder scheduling
             $this->verifyReminderScheduling($appointments);
 
-            // Step 5: Test email functionality
+            // Step 4: Test email functionality
             $this->testEmailFunctionality($appointments[0]);
 
-            // Step 6: Display API testing instructions
+            // Step 5: Display API testing instructions
             $this->displayApiTestingInstructions($users);
 
             $this->info('✅ ASIO Reminder System test setup completed successfully!');
@@ -62,21 +56,7 @@ class SetupReminderSystemTest extends Command
         }
 
         return 0;
-    }
-
-    protected function setupRoles()
-    {
-        $this->info('📋 Setting up roles...');
-
-        $roles = ['admin', 'doctor', 'patient', 'receptionist'];
-        
-        foreach ($roles as $roleName) {
-            $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
-            $this->line("  ✓ Role '{$roleName}' ready");
-        }
-    }
-
-    protected function setupTestUsers()
+    }    protected function setupTestUsers()
     {
         $this->info('👥 Setting up test users...');
 
@@ -93,7 +73,6 @@ class SetupReminderSystemTest extends Command
                 'status' => 'active'
             ]
         );
-        $admin->assignRole('admin');
         $users['admin'] = $admin;
         $this->line("  ✓ Admin: {$admin->email}");
 
@@ -108,7 +87,6 @@ class SetupReminderSystemTest extends Command
                 'status' => 'active'
             ]
         );
-        $doctor->assignRole('doctor');
         $users['doctor'] = $doctor;
         $this->line("  ✓ Doctor: {$doctor->email}");
 
@@ -123,7 +101,6 @@ class SetupReminderSystemTest extends Command
                 'status' => 'active'
             ]
         );
-        $patient->assignRole('patient');
         $users['patient'] = $patient;
         $this->line("  ✓ Patient: {$patient->email}");
 
@@ -185,11 +162,11 @@ class SetupReminderSystemTest extends Command
         $this->line("  ✓ Appointment 3: In 2 hours (urgent)");
 
         return $appointments;
-    }
-
-    protected function verifyReminderScheduling($appointments)
+    }    protected function verifyReminderScheduling($appointments)
     {
-        $this->info('⏰ Verifying reminder scheduling...');
+        $this->info('⏰ Verifying automatic reminder scheduling...');
+        $this->line('   💡 Note: Reminders are automatically scheduled by AppointmentObserver when appointments are created');
+        $this->line('');
 
         foreach ($appointments as $index => $appointment) {
             $this->line("  📋 Appointment " . ($index + 1) . ":");
@@ -197,39 +174,69 @@ class SetupReminderSystemTest extends Command
             $this->line("     Doctor: {$appointment->doctor->name}");
             $this->line("     Time: {$appointment->appointment_datetime_start->format('Y-m-d H:i')}");
             
-            // Check scheduled reminders
-            $reminders = $appointment->reminders;
-            $this->line("     Reminders scheduled: {$reminders->count()}");
+            // Check scheduled reminder jobs (the new way)
+            $scheduledJobs = \App\Models\ScheduledReminderJob::where('appointment_id', $appointment->id)
+                ->orderBy('scheduled_for', 'asc')
+                ->get();
+            $this->line("     Scheduled reminder jobs: {$scheduledJobs->count()}");
             
-            foreach ($reminders as $reminder) {
-                $this->line("       - {$reminder->reminder_type}: {$reminder->scheduled_at->format('Y-m-d H:i')} (Status: {$reminder->status})");
+            foreach ($scheduledJobs as $job) {
+                $status = $job->status === 'pending' ? '⏳ ' . $job->status : '✅ ' . $job->status;
+                $this->line("       - {$job->reminder_type} via {$job->channel}: {$job->scheduled_for->format('Y-m-d H:i')} ({$status})");
             }
+            
+            // Check reminder logs (if any have been sent)
+            $sentReminders = \App\Models\ReminderLog::where('appointment_id', $appointment->id)->count();
+            if ($sentReminders > 0) {
+                $this->line("     📧 Reminders already sent: {$sentReminders}");
+            }
+            
             $this->line('');
         }
-    }
-
-    protected function testEmailFunctionality($appointment)
+    }protected function testEmailFunctionality($appointment)
     {
         $this->info('📧 Testing email functionality...');
 
         try {
-            // Get the first reminder for this appointment
-            $reminder = $appointment->reminders->first();
+            // Check scheduled reminders (created automatically by observer)
+            $scheduledReminders = \App\Models\ScheduledReminderJob::where('appointment_id', $appointment->id)
+                ->where('status', 'pending')
+                ->orderBy('scheduled_for', 'asc')
+                ->get();
             
-            if ($reminder) {
-                $this->line("  Sending test email for {$reminder->reminder_type} reminder...");
+            if ($scheduledReminders->count() > 0) {
+                $this->line("  ✅ Found {$scheduledReminders->count()} scheduled reminders (automatic)");
                 
-                $result = $this->notificationService->sendReminder($reminder);
+                foreach ($scheduledReminders as $reminder) {
+                    $this->line("     - {$reminder->reminder_type} via {$reminder->channel}: {$reminder->scheduled_for->format('Y-m-d H:i')}");
+                }
+                
+                $this->line("  ⏰ Reminders will be sent automatically at scheduled times");
+                $this->line("  💡 Note: Appointment observer automatically schedules reminders on creation");
+                
+            } else {
+                $this->line("  ⚠️  No scheduled reminders found");
+                
+                // Send a manual test email if no automatic reminders
+                $this->line("  📧 Sending manual test email...");
+                $result = $this->notificationService->sendReminder(
+                    $appointment,
+                    $appointment->patient,
+                    'email',
+                    'test',
+                    [
+                        'priority' => 'test',
+                        'test_mode' => true,
+                        'custom_message' => 'This is a manual test email from the setup command'
+                    ]
+                );
                 
                 if ($result['success']) {
-                    $this->line("  ✅ Email sent successfully!");
+                    $this->line("  ✅ Manual test email sent successfully!");
                     $this->line("     Recipient: {$appointment->patient->email}");
-                    $this->line("     Subject: {$result['subject']}");
                 } else {
-                    $this->line("  ❌ Email failed: {$result['error']}");
+                    $this->line("  ❌ Manual test email failed: {$result['error']}");
                 }
-            } else {
-                $this->line("  ⚠️  No reminders found for testing");
             }
 
         } catch (\Exception $e) {
@@ -274,10 +281,23 @@ class SetupReminderSystemTest extends Command
         $this->line('   php artisan reminder:test-email');
         $this->line('   php artisan reminder:send-scheduled');
         $this->line('');
-        
-        $this->line('📊 Database Status:');
+          $this->line('📊 Database Status:');
         $this->line('   Appointments: ' . Appointment::count());
-        $this->line('   Scheduled Reminders: ' . \App\Models\AppointmentReminder::count());
+        $this->line('   Scheduled Reminder Jobs: ' . \App\Models\ScheduledReminderJob::count());
         $this->line('   Reminder Logs: ' . \App\Models\ReminderLog::count());
+        $this->line('');
+        
+        $this->line('🔄 Queue Status:');
+        $pendingJobs = \App\Models\ScheduledReminderJob::where('status', 'pending')->count();
+        $processedJobs = \App\Models\ScheduledReminderJob::whereIn('status', ['sent', 'failed'])->count();
+        $this->line("   Pending reminder jobs: {$pendingJobs}");
+        $this->line("   Processed reminder jobs: {$processedJobs}");
+        $this->line('');
+        
+        $this->line('💡 Important Notes:');
+        $this->line('   • Reminders are automatically scheduled when appointments are created');
+        $this->line('   • The AppointmentObserver handles this process');
+        $this->line('   • No need to manually schedule reminders in most cases');
+        $this->line('   • Queue workers will process scheduled reminders at the right time');
     }
 }

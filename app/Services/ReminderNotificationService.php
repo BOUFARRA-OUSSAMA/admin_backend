@@ -42,6 +42,9 @@ class ReminderNotificationService
                 'message_id' => $result['message_id'] ?? null
             ]);
 
+            // Update appointment model fields for backwards compatibility
+            $this->updateAppointmentReminderFields($appointment, $channel);
+
             return [
                 'success' => true,
                 'channel' => $channel,
@@ -474,5 +477,32 @@ class ReminderNotificationService
         }
 
         return $results;
+    }
+
+    /**
+     * Update appointment model reminder fields for backwards compatibility
+     */
+    private function updateAppointmentReminderFields(Appointment $appointment, string $channel): void
+    {
+        try {
+            // Only update on the first successful reminder send
+            if (!$appointment->reminder_sent) {
+                $appointment->update([
+                    'reminder_sent' => true,
+                    'reminder_sent_at' => now()
+                ]);
+
+                Log::info("Updated appointment reminder fields", [
+                    'appointment_id' => $appointment->id,
+                    'channel' => $channel,
+                    'reminder_sent_at' => now()
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error("Failed to update appointment reminder fields", [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
