@@ -120,6 +120,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     // Bill routes for patients (read-only) - REMOVE extra middleware group
     Route::get('patient/bills', [BillController::class, 'getMyBills']);
     Route::get('patient/bills/{bill}', [BillController::class, 'viewBill']);
+    Route::get('patient/bills/{bill}/receipt', [BillController::class, 'downloadBillReceiptForPatient'])->name('patient.bills.receipt.download');
 
     // APPOINTMENT MANAGEMENT ROUTES
     // ->middleware(['permission:appointments:manage'])

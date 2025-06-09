@@ -160,7 +160,7 @@ return [
 
         App\Providers\RepositoryServiceProvider::class,
         Stevebauman\Location\LocationServiceProvider::class,
-
+        Barryvdh\DomPDF\ServiceProvider::class,
     ],
 
     'aliases' => [
@@ -172,6 +172,7 @@ return [
         'Config' => Illuminate\Support\Facades\Config::class,
         'DB' => Illuminate\Support\Facades\DB::class,
         'Location' => Stevebauman\Location\Facades\Location::class,
+    'Pdf' => Barryvdh\DomPDF\Facade\Pdf::class,
     ],
 
 ];
