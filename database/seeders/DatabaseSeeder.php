@@ -32,6 +32,9 @@ class DatabaseSeeder extends Seeder
             AppointmentSeeder::class,
             BlockedTimeSlotsSeeder::class,
             
+            // Notification test data
+            NotificationTestDataSeeder::class,
+            
             // Other seeders
             AiModelSeeder::class,
             ActivityLogSeeder::class,
