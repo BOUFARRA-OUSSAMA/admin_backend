@@ -497,3 +497,31 @@ The ASIO Automated Appointment Reminder System is **production-ready** and will 
 ---
 *Remember: The beauty of this system is that it's "set it and forget it" - once an appointment is created and confirmed, the reminder system handles everything automatically!*
 
+
+
+
+📅 Day 1 (June 10): Receptionist creates appointment
+   ↓
+🔍 AppointmentObserver detects creation
+   ↓
+⏰ ScheduleAppointmentReminders job runs immediately
+   ↓
+📋 Creates scheduled jobs:
+   • Email reminder for June 11 at 2:00 PM (24h before)
+   • Push reminder for June 11 at 2:00 PM (24h before)
+   • Email reminder for June 12 at 12:00 PM (2h before)
+   • Push reminder for June 12 at 12:00 PM (2h before)
+   ↓
+💾 Jobs stored in Laravel queue with correct timing
+   ↓
+📅 Day 2 (June 11 at 2:00 PM): Queue worker executes first reminders
+   • SendAppointmentReminder job runs
+   • Sends email: "You have an appointment tomorrow at 2:00 PM"
+   • Sends push notification to patient's phone
+   ↓
+📅 Day 3 (June 12 at 12:00 PM): Queue worker executes second reminders
+   • SendAppointmentReminder job runs again
+   • Sends email: "You have an appointment in 2 hours"
+   • Sends push notification: "Appointment starting soon"
+   ↓
+✅ Patient receives timely reminders automatically!
