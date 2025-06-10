@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\DoctorAppointmentController;
 use App\Http\Controllers\Api\PersonalInfoController;
 use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\AppointmentReminderController;
+use App\Http\Controllers\Api\NotificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -275,6 +276,17 @@ Route::group(['middleware' => ['jwt.auth']], function () {
             Route::post('/test', [AppointmentReminderController::class, 'testReminderDelivery']);
         });
     });
+});
+
+// In-App Notifications Routes (Authenticated Users)
+Route::middleware(['auth:api'])->prefix('notifications')->group(function () {
+    Route::get('/', [NotificationController::class, 'index']);                    // GET /api/notifications
+    Route::get('/unread-count', [NotificationController::class, 'getUnreadCount']); // GET /api/notifications/unread-count
+    Route::get('/upcoming-reminders', [NotificationController::class, 'getUpcomingReminders']); // GET /api/notifications/upcoming-reminders
+    Route::put('/mark-all-read', [NotificationController::class, 'markAllAsRead']); // PUT /api/notifications/mark-all-read
+    Route::put('/{id}/read', [NotificationController::class, 'markAsRead']);      // PUT /api/notifications/{id}/read
+    Route::delete('/clear-read', [NotificationController::class, 'clearRead']);   // DELETE /api/notifications/clear-read (BEFORE {id})
+    Route::delete('/{id}', [NotificationController::class, 'destroy']);          // DELETE /api/notifications/{id}
 });
 
 // Test route
