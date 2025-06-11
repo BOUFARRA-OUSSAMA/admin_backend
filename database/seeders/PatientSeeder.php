@@ -34,8 +34,8 @@ class PatientSeeder extends Seeder
         
         // ✅ SCALED UP: More patients for 2 years of realistic bill data
         $patientCount = 1000; // Increased from 250 to support 2 years of bills
-        $startDate = Carbon::create(2023, 1, 1); // Extended start date
-        $endDate = Carbon::create(2025, 6, 2);   // Same end date
+        $startDate = Carbon::create(2022, 1, 1); // Changed from 2023 to 2022
+        $endDate = Carbon::create(2025, 12, 31);   // Extended to end of 2025
         
         // Distribution settings for more realistic data
         $genders = ['male', 'female', 'other'];

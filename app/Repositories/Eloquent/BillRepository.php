@@ -271,49 +271,70 @@ class BillRepository implements BillRepositoryInterface
     }
 
     /**
-     * Apply filters to the query
-     *
+     * Apply filters to the query (Azure PostgreSQL optimized)
+     * 
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @param array $filters
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    protected function applyFilters($query, array $filters = [])
+    protected function applyFilters($query, array $filters)
     {
-        // Handle multiple doctor IDs (comma-separated)
-        if (!empty($filters['doctor_id'])) {
-            if (strpos($filters['doctor_id'], ',') !== false) {
-                $doctorIds = array_map('trim', explode(',', $filters['doctor_id']));
-                $doctorIds = array_filter($doctorIds, 'is_numeric'); // Ensure only numeric values
-                $query->whereIn('doctor_user_id', $doctorIds);
+        // Handle patient_id filter (comma-separated support)
+        if (!empty($filters['patient_id'])) {
+            if (is_string($filters['patient_id']) && strpos($filters['patient_id'], ',') !== false) {
+                // Convert comma-separated string to array of integers
+                $patientIds = array_map('intval', array_filter(explode(',', $filters['patient_id']), 'is_numeric'));
+                if (!empty($patientIds)) {
+                    $query->whereIn('patient_id', $patientIds);
+                }
             } else {
-                $query->where('doctor_user_id', $filters['doctor_id']);
+                $query->where('patient_id', (int)$filters['patient_id']);
             }
         }
         
-        // Handle multiple doctor names (comma-separated)
+        // Handle doctor_user_id filter (comma-separated support)
+        if (!empty($filters['doctor_user_id'])) {
+            if (is_string($filters['doctor_user_id']) && strpos($filters['doctor_user_id'], ',') !== false) {
+                $doctorIds = array_map('intval', array_filter(explode(',', $filters['doctor_user_id']), 'is_numeric'));
+                if (!empty($doctorIds)) {
+                    $query->whereIn('doctor_user_id', $doctorIds);
+                }
+            } else {
+                $query->where('doctor_user_id', (int)$filters['doctor_user_id']);
+            }
+        }
+        
+        // Handle legacy doctor_id filter (maps to doctor_user_id)
+        if (!empty($filters['doctor_id'])) {
+            if (is_string($filters['doctor_id']) && strpos($filters['doctor_id'], ',') !== false) {
+                $doctorIds = array_map('intval', array_filter(explode(',', $filters['doctor_id']), 'is_numeric'));
+                if (!empty($doctorIds)) {
+                    $query->whereIn('doctor_user_id', $doctorIds);
+                }
+            } else {
+                $query->where('doctor_user_id', (int)$filters['doctor_id']);
+            }
+        }
+        
+        // Handle doctor name filter (comma-separated support)
         if (!empty($filters['doctor_name'])) {
             if (strpos($filters['doctor_name'], ',') !== false) {
                 $doctorNames = array_map('trim', explode(',', $filters['doctor_name']));
                 $query->whereHas('doctor', function($q) use ($doctorNames) {
                     $q->where(function($nameQuery) use ($doctorNames) {
                         foreach ($doctorNames as $name) {
-                            $nameQuery->orWhere('name', 'LIKE', '%' . $name . '%');
+                            $nameQuery->orWhere('name', 'ILIKE', '%' . $name . '%'); // ILIKE for case-insensitive
                         }
                     });
                 });
             } else {
                 $query->whereHas('doctor', function($q) use ($filters) {
-                    $q->where('name', 'LIKE', '%' . $filters['doctor_name'] . '%');
+                    $q->where('name', 'ILIKE', '%' . $filters['doctor_name'] . '%');
                 });
             }
         }
         
-        // Handle patient ID
-        if (!empty($filters['patient_id'])) {
-            $query->where('patient_id', $filters['patient_id']);
-        }
-        
-        // Handle date filtering
+        // Handle date filtering with proper casting
         if (!empty($filters['date_from'])) {
             $query->whereDate('issue_date', '>=', $filters['date_from']);
         }
@@ -322,16 +343,16 @@ class BillRepository implements BillRepositoryInterface
             $query->whereDate('issue_date', '<=', $filters['date_to']);
         }
         
-        // Handle amount filtering
+        // Handle amount filtering with proper numeric casting
         if (!empty($filters['amount_min'])) {
-            $query->where('amount', '>=', $filters['amount_min']);
+            $query->where('amount', '>=', (float)$filters['amount_min']);
         }
         
         if (!empty($filters['amount_max'])) {
-            $query->where('amount', '<=', $filters['amount_max']);
+            $query->where('amount', '<=', (float)$filters['amount_max']);
         }
         
-        // Handle multiple payment methods (comma-separated)
+        // Handle payment method filter (comma-separated support)
         if (!empty($filters['payment_method'])) {
             if (strpos($filters['payment_method'], ',') !== false) {
                 $paymentMethods = array_map('trim', explode(',', $filters['payment_method']));
@@ -341,7 +362,7 @@ class BillRepository implements BillRepositoryInterface
             }
         }
         
-        // Handle multiple service types (comma-separated)
+        // Handle service type filter (comma-separated support with relationship)
         if (!empty($filters['service_type'])) {
             if (strpos($filters['service_type'], ',') !== false) {
                 $serviceTypes = array_map('trim', explode(',', $filters['service_type']));
@@ -353,6 +374,20 @@ class BillRepository implements BillRepositoryInterface
                     $itemsQuery->where('service_type', $filters['service_type']);
                 });
             }
+        }
+        
+        // Handle global search across multiple fields
+        if (!empty($filters['search'])) {
+            $searchTerm = $filters['search'];
+            $query->where(function($searchQuery) use ($searchTerm) {
+                $searchQuery->where('bill_number', 'ILIKE', '%' . $searchTerm . '%')
+                            ->orWhereHas('patient.user', function($patientQuery) use ($searchTerm) {
+                                $patientQuery->where('name', 'ILIKE', '%' . $searchTerm . '%');
+                            })
+                            ->orWhereHas('doctor', function($doctorQuery) use ($searchTerm) {
+                                $doctorQuery->where('name', 'ILIKE', '%' . $searchTerm . '%');
+                            });
+            });
         }
         
         return $query;
