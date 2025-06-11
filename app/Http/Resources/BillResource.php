@@ -26,12 +26,21 @@ class BillResource extends JsonResource
                 ];
             }),
             'doctor' => $this->whenLoaded('doctor', function () {
-                 // $this->doctor here is the User model instance for the doctor
+                // Load the doctor specialty through the relationship
+                $doctorSpecialty = null;
+                
+                // Get the specialty from the doctor model
+                $doctorUser = $this->doctor;
+                if ($doctorUser && $doctorUser->doctor) {
+                    $doctorSpecialty = $doctorUser->doctor->specialty;
+                }
+                
                 return [
                     'id' => $this->doctor->id,
-                    'name' => $this->doctor->name ?? 'Unknown Doctor', // Name is directly on the User model
-                    // Access specialty through the User's 'doctor' profile relationship
-                    'specialty' => $this->doctor->doctor ? $this->doctor->doctor->specialty : null,
+                    'name' => $this->doctor->name,
+                    'email' => $this->doctor->email,
+                    'phone' => $this->doctor->phone,
+                    'specialty' => $doctorSpecialty
                 ];
             }),
             'amount' => (float) $this->amount,

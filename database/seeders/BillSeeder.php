@@ -6,6 +6,7 @@ use App\Models\Bill;
 use App\Models\Patient;
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Doctor; // Add this line to import the Doctor model
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,14 +34,45 @@ class BillSeeder extends Seeder
         
         if ($doctors->count() < 50) {
             $this->command->info('Creating additional doctors for testing...');
+
+            
+            // List of medical specialties
+            $specialties = [
+                'Cardiology', 'Dermatology', 'Endocrinology', 'Gastroenterology',
+                'Neurology', 'Oncology', 'Pediatrics', 'Psychiatry', 'Radiology',
+                'Urology', 'Family Medicine', 'Internal Medicine', 'General Surgery'
+            ];
+            
             for ($i = $doctors->count(); $i < 50; $i++) {
                 $doctor = User::create([
                     'name' => 'Dr. ' . $faker->name,
                     'email' => 'doctor_' . Str::random(6) . '@example.com',
                     'password' => bcrypt('password'),
                     'status' => 'active',
+                    'phone' => '+212 ' . $faker->numberBetween(6, 7) . $faker->numerify('## ### ###'),
                 ]);
                 $doctor->roles()->attach($doctorRole->id);
+                
+                // Create corresponding doctor specialty record
+                Doctor::create([
+                    'user_id' => $doctor->id,
+                    'specialty' => $faker->randomElement($specialties),
+                    'license_number' => 'LIC-' . strtoupper(Str::random(8)),
+                    'experience_years' => rand(1, 30),
+                    'consultation_fee' => rand(100, 1000),
+                    'max_patient_appointments' => rand(5, 20),
+                    'is_available' => true,
+                    'working_hours' => json_encode([
+                        'monday' => ['09:00-12:00', '14:00-17:00'],
+                        'tuesday' => ['09:00-12:00', '14:00-17:00'],
+                        'wednesday' => ['09:00-12:00', '14:00-17:00'],
+                        'thursday' => ['09:00-12:00', '14:00-17:00'],
+                        'friday' => ['09:00-12:00', '14:00-17:00'],
+                        'saturday' => ['09:00-12:00'],
+                        'sunday' => []
+                    ])
+                ]);
+                
                 $doctors->push($doctor);
             }
         }
