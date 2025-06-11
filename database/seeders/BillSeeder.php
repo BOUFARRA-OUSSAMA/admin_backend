@@ -34,6 +34,7 @@ class BillSeeder extends Seeder
         
         if ($doctors->count() < 50) {
             $this->command->info('Creating additional doctors for testing...');
+
             
             // List of medical specialties
             $specialties = [
