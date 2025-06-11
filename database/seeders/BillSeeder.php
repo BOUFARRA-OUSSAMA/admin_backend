@@ -25,15 +25,15 @@ class BillSeeder extends Seeder
         
         $faker = Faker::create();
         
-        // Get or create doctors (at least 5)
+        // Get or create doctors (at least 50)
         $doctorRole = Role::where('code', 'doctor')->first();
         $doctors = User::whereHas('roles', function($query) use ($doctorRole) {
             $query->where('roles.id', $doctorRole->id);
         })->get();
         
-        if ($doctors->count() < 5) {
+        if ($doctors->count() < 50) {
             $this->command->info('Creating additional doctors for testing...');
-            for ($i = $doctors->count(); $i < 5; $i++) {
+            for ($i = $doctors->count(); $i < 50; $i++) {
                 $doctor = User::create([
                     'name' => 'Dr. ' . $faker->name,
                     'email' => 'doctor_' . Str::random(6) . '@example.com',
@@ -78,9 +78,9 @@ class BillSeeder extends Seeder
         // Service codes with price ranges
         $serviceCodes = $this->getServiceCodes();
         
-        // Define specific date range - all of 2024 plus 2025 up to June 2
-        $startDate = Carbon::create(2024, 1, 1, 0, 0, 0); // January 1, 2024
-        $endDate = Carbon::create(2025, 6, 2, 23, 59, 59); // June 2, 2025
+        // Define specific date range - all of 2022 to 2025
+        $startDate = Carbon::create(2022, 1, 1, 0, 0, 0); // January 1, 2022
+        $endDate = Carbon::create(2025, 12, 31, 23, 59, 59); // December 31, 2025
         
         $this->command->info('Generating bills from ' . $startDate->format('Y-m-d') . ' to ' . $endDate->format('Y-m-d'));
         
