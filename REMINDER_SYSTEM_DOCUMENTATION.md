@@ -100,8 +100,8 @@ Updated `PermissionSeeder.php` with reminder-specific permissions:
 ```
 GET    /api/reminders/settings           - Get user reminder settings
 PUT    /api/reminders/settings           - Update user reminder settings
-POST   /api/reminders/schedule           - Schedule reminders (Admin/Staff)
-POST   /api/reminders/cancel             - Cancel reminders (Admin/Staff)
+POST   /api/reminders/schedule           - Schedule reminders (receptionist/Staff)
+POST   /api/reminders/cancel             - Cancel reminders (receptionist/Staff)
 POST   /api/reminders/test               - Send test reminder
 GET    /api/reminders/logs               - Get reminder logs with filtering
 GET    /api/reminders/analytics          - Get reminder analytics (Admin)

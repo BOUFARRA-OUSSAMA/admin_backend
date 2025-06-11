@@ -167,4 +167,39 @@ class PatientController extends Controller
             return $this->error('Failed to delete patient: ' . $e->getMessage(), 500);
         }
     }
+
+    /**
+     * Get patient medical data summary.
+     *
+     * @param  \App\Models\User  $patient
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMedicalData(User $patient)
+    {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            
+            // Check if user has permission to view patient medical data
+            if (!$user->hasPermission('patients:view-medical') && !$user->isPatient()) {
+                return $this->error('Insufficient permissions', 403);
+            }
+            
+            // If user is a patient, they can only view their own data
+            if ($user->isPatient() && $user->id !== $patient->id) {
+                return $this->error('Access denied', 403);
+            }
+
+            $patientRecord = $user->isPatient() ? $user->patient : $patient->patient;
+            
+            if (!$patientRecord) {
+                return $this->error('Patient record not found', 404);
+            }
+
+            $medicalData = $patientRecord->getPatientSummary();
+
+            return $this->success($medicalData, 'Patient medical data retrieved successfully');
+        } catch (\Exception $e) {
+            return $this->error('Failed to retrieve patient medical data: ' . $e->getMessage(), 500);
+        }
+    }
 }
