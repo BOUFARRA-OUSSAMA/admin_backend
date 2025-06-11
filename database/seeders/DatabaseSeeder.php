@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             
             // Patient seeder BEFORE bill seeder
             PatientSeeder::class,
+            DoctorSpecialtySeeder::class,
             
             // Appointment-related data
             AppointmentSeeder::class,
