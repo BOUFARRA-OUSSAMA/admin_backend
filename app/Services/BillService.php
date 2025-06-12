@@ -52,8 +52,9 @@ class BillService
      */
     public function getAllBills(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        // Change from getAll() to one of the methods that actually exists
-        return $this->billRepository->getBills($filters, $perPage);
+        // Need to pass the nested relationships so we can access patient name and doctor specialty
+        $relations = ['patient.user', 'doctor.doctor', 'items'];
+        return $this->billRepository->getBills($filters, $relations, $perPage);
     }
     
     /**

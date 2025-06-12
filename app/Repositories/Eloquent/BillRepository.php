@@ -252,12 +252,18 @@ class BillRepository implements BillRepositoryInterface
      * Get bills with filtering and pagination
      *
      * @param array $filters
+     * @param array $relations
      * @param int $perPage
      * @return LengthAwarePaginator
      */
-    public function getBills(array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function getBills(array $filters = [], array $relations = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->getAllWithFilters($filters, ['patient', 'doctor', 'items'], $perPage);
+        // If no relations specified, use defaults
+        if (empty($relations)) {
+            $relations = ['patient', 'doctor', 'items'];
+        }
+        
+        return $this->getAllWithFilters($filters, $relations, $perPage);
     }
     
     /**
