@@ -1,0 +1,1412 @@
+{
+	"info": {
+		"_postman_id": "796f87d3-137d-4f17-9738-e352dec68fa6",
+		"name": "Receptionist Workflow - Appointments & Reminders",
+		"description": "Comprehensive collection for receptionist users to manage appointments and reminders. Includes CRUD operations, reminder management, and typical receptionist workflows.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30471774"
+	},
+	"item": [
+		{
+			"name": "🔑 Authentication",
+			"item": [
+				{
+					"name": "Login as Receptionist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.success && responseJson.data.access_token) {",
+									"        pm.collectionVariables.set('receptionist_token', responseJson.data.access_token);",
+									"        pm.collectionVariables.set('receptionist_id', responseJson.data.user.id);",
+									"        console.log('Receptionist token saved successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"receptionist@clinic.com\",\n  \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/auth/login",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login as Admin (Backup)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.success && responseJson.data.access_token) {",
+									"        pm.collectionVariables.set('admin_token', responseJson.data.access_token);",
+									"        pm.collectionVariables.set('admin_id', responseJson.data.user.id);",
+									"        console.log('Admin token saved successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@clinic.com\",\n  \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/auth/login",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{receptionist_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/auth/me",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📅 Appointment Management",
+			"item": [
+				{
+					"name": "📋 Appointment CRUD",
+					"item": [
+						{
+							"name": "Get All Appointments",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments?per_page=20",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments"
+									],
+									"query": [
+										{
+											"key": "per_page",
+											"value": "20"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Appointments with Filters",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments?date={{current_date}}&status=confirmed&upcoming=true",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments"
+									],
+									"query": [
+										{
+											"key": "date",
+											"value": "{{current_date}}",
+											"description": "Filter by specific date (YYYY-MM-DD)"
+										},
+										{
+											"key": "status",
+											"value": "confirmed",
+											"description": "Filter by status: pending, confirmed, cancelled, completed"
+										},
+										{
+											"key": "patient_id",
+											"value": "",
+											"description": "Filter by patient ID",
+											"disabled": true
+										},
+										{
+											"key": "doctor_id",
+											"value": "",
+											"description": "Filter by doctor ID",
+											"disabled": true
+										},
+										{
+											"key": "search",
+											"value": "",
+											"description": "Search in patient/doctor names",
+											"disabled": true
+										},
+										{
+											"key": "upcoming",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Today's Appointments",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments?today=true",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments"
+									],
+									"query": [
+										{
+											"key": "today",
+											"value": "true"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create New Appointment",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const responseJson = pm.response.json();",
+											"    if (responseJson.success && responseJson.data.id) {",
+											"        pm.collectionVariables.set('appointment_id', responseJson.data.id);",
+											"        console.log('Appointment ID saved: ' + responseJson.data.id);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"patient_id\": {{patient_id}},\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_datetime_start\": \"2025-06-15 14:30:00\",\n  \"appointment_datetime_end\": \"2025-06-15 15:00:00\",\n  \"type\": \"consultation\",\n  \"reason\": \"Annual health checkup\",\n  \"patient_notes\": \"Patient mentioned feeling tired lately\",\n  \"staff_notes\": \"Booked by reception - regular checkup\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Specific Appointment",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Appointment",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"appointment_datetime_start\": \"2025-06-15 15:00:00\",\n  \"appointment_datetime_end\": \"2025-06-15 15:30:00\",\n  \"reason\": \"Annual health checkup - updated\",\n  \"staff_notes\": \"Time updated per patient request\",\n  \"status\": \"confirmed\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Appointment",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "🔄 Appointment Actions",
+					"item": [
+						{
+							"name": "Confirm Appointment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"notes\": \"Appointment confirmed by reception\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/confirm",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"confirm"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Cancel Appointment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Patient requested cancellation\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/cancel",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"cancel"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Complete Appointment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"notes\": \"Appointment completed successfully\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/complete",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"complete"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reschedule Appointment",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"new_datetime_start\": \"2025-06-16 10:00:00\",\n  \"new_datetime_end\": \"2025-06-16 10:30:00\",\n  \"reason\": \"Doctor schedule change\",\n  \"notes_by_staff\": \"Rescheduled due to doctor availability\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/reschedule",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"reschedule"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "📊 Appointment Utilities",
+					"item": [
+						{
+							"name": "Get Available Time Slots",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/slots/available?doctor_id={{doctor_id}}&date=2025-06-26",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"slots",
+										"available"
+									],
+									"query": [
+										{
+											"key": "doctor_id",
+											"value": "{{doctor_id}}"
+										},
+										{
+											"key": "date",
+											"value": "2025-06-26"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔔 Reminder Management",
+			"item": [
+				{
+					"name": "📨 Global Reminder Operations",
+					"item": [
+						{
+							"name": "Schedule Custom Reminders",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"appointment_id\": {{appointment_id}},\n  \"channels\": [\"email\", \"sms\"],\n  \"reminder_times\": [30, 60, 1440],\n  \"priority\": \"high\",\n  \"custom_message\": \"Important: Please bring your insurance card and arrive 15 minutes early\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/reminders/schedule",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"schedule"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Cancel Reminders",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"appointment_id\": {{appointment_id}},\n  \"reason\": \"Appointment cancelled by patient\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/reminders/cancel",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"cancel"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Send Test Reminder",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"appointment_id\": {{appointment_id}},\n  \"channels\": [\"email\"],\n  \"message\": \"Test reminder - please confirm receipt\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/reminders/test",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"test"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Reminder Logs",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/reminders/logs?start_date=2025-06-01&end_date=2025-06-30",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"logs"
+									],
+									"query": [
+										{
+											"key": "start_date",
+											"value": "2025-06-01"
+										},
+										{
+											"key": "end_date",
+											"value": "2025-06-30"
+										},
+										{
+											"key": "status",
+											"value": "delivered",
+											"disabled": true
+										},
+										{
+											"key": "appointment_id",
+											"value": "10",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Reminder Analytics",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/reminders/analytics?start_date=2025-06-01&end_date=2025-06-30",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"analytics"
+									],
+									"query": [
+										{
+											"key": "start_date",
+											"value": "2025-06-01"
+										},
+										{
+											"key": "end_date",
+											"value": "2025-06-30"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Bulk Reminder Operations",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"operation\": \"schedule\",\n  \"appointment_ids\": [1, 2, 3, 4, 5],\n  \"options\": {\n    \"channels\": [\"email\"],\n    \"custom_times\": [60],\n    \"priority\": \"high\",\n    \"custom_message\": \"Important clinic announcement: Please arrive 10 minutes early for new check-in process\"\n  }\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/reminders/bulk",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"bulk"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "📋 Appointment-Specific Reminders",
+					"item": [
+						{
+							"name": "Get Appointment Reminders",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"reminders"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Reminder Delivery Status",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/status",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"reminders",
+										"status"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Schedule Custom Appointment Reminder",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"channels\": [\"sms\"],\n  \"reminder_time\": \"2025-06-15\", \n  \"custom_message\": \"Special instructions: Please fast for 12 hours before your appointment\",\n  \"priority\": \"normal\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/custom",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"reminders",
+										"custom"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Cancel Specific Reminder",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/{{reminder_id}}",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"reminders",
+										"{{reminder_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reschedule Specific Reminder",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"new_reminder_time\": 45,\n  \"reason\": \"Changed to 45 minutes before\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/{{reminder_id}}/reschedule",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"reminders",
+										"{{reminder_id}}",
+										"reschedule"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Test Reminder Delivery",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"channel\": \"email\",\n  \"test_message\": \"This is a test reminder to verify delivery\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/test",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{appointment_id}}",
+										"reminders",
+										"test"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🧪 Workflow Testing Scenarios",
+			"item": [
+				{
+					"name": "🏥 Daily Receptionist Workflow",
+					"item": [
+						{
+							"name": "1. Morning Check - Today's Appointments",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments?today=true&status=confirmed",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments"
+									],
+									"query": [
+										{
+											"key": "today",
+											"value": "true"
+										},
+										{
+											"key": "status",
+											"value": "confirmed"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. New Patient Appointment Booking",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    const responseJson = pm.response.json();",
+											"    if (responseJson.success && responseJson.data.id) {",
+											"        pm.collectionVariables.set('new_appointment_id', responseJson.data.id);",
+											"        console.log('New appointment created with ID: ' + responseJson.data.id);",
+											"        console.log('⭐ AUTOMATIC REMINDERS: The system automatically schedules reminders for this appointment!');",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"patient_id\": {{patient_id}},\n  \"doctor_id\": {{doctor_id}},\n  \"appointment_datetime_start\": \"2025-06-20 09:30:00\",\n  \"appointment_datetime_end\": \"2025-06-20 10:00:00\",\n  \"type\": \"consultation\",\n  \"reason\": \"New patient consultation\",\n  \"patient_notes\": \"First visit - general health assessment\",\n  \"staff_notes\": \"New patient booking by reception\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3. Verify Auto-Generated Reminders",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/{{new_appointment_id}}/reminders",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{new_appointment_id}}",
+										"reminders"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4. Handle Schedule Change Request",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"new_datetime_start\": \"2025-06-20 14:00:00\",\n  \"new_datetime_end\": \"2025-06-20 14:30:00\",\n  \"reason\": \"Patient requested afternoon slot\",\n  \"notes_by_staff\": \"Rescheduled per patient preference\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{new_appointment_id}}/reschedule",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{new_appointment_id}}",
+										"reschedule"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "5. Verify Reminders Auto-Updated",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments/{{new_appointment_id}}/reminders",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{new_appointment_id}}",
+										"reminders"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "🚨 Emergency Procedures",
+					"item": [
+						{
+							"name": "Emergency Cancellation (Auto-Cancel Reminders)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Doctor emergency - need to reschedule\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/appointments/{{new_appointment_id}}/cancel",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments",
+										"{{new_appointment_id}}",
+										"cancel"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Send Emergency Notification",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"appointment_id\": {{new_appointment_id}},\n  \"channel\": \"sms\",\n  \"message\": \"URGENT: Your appointment has been cancelled due to emergency. We will contact you to reschedule. Sorry for the inconvenience.\"\n}"
+								},
+								"url": {
+									"raw": "{{api_url}}/reminders/test",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"test"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "📊 End-of-Day Reports",
+					"item": [
+						{
+							"name": "Today's Appointment Summary",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/appointments?date={{current_date}}&per_page=50",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"appointments"
+									],
+									"query": [
+										{
+											"key": "date",
+											"value": "{{current_date}}"
+										},
+										{
+											"key": "per_page",
+											"value": "50"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Reminder Delivery Report",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{receptionist_token}}"
+									}
+								],
+								"url": {
+									"raw": "{{api_url}}/reminders/logs?start_date={{current_date}}&end_date={{current_date}}",
+									"host": [
+										"{{api_url}}"
+									],
+									"path": [
+										"reminders",
+										"logs"
+									],
+									"query": [
+										{
+											"key": "start_date",
+											"value": "{{current_date}}"
+										},
+										{
+											"key": "end_date",
+											"value": "{{current_date}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "🔒 Error Handling & Validation",
+			"item": [
+				{
+					"name": "Invalid Appointment Data",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{receptionist_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patient_id\": \"invalid\",\n  \"doctor_id\": 999,\n  \"appointment_datetime_start\": \"2020-01-01 10:00:00\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/appointments",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"appointments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Reminder Configuration",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{receptionist_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"appointment_id\": \"invalid\",\n  \"channels\": [\"carrier_pigeon\"],\n  \"reminder_times\": [99999]\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/reminders/schedule",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"reminders",
+								"schedule"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unauthorized Access (No Token)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_url}}/appointments",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"appointments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Non-existent Appointment",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{receptionist_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/appointments/99999",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"appointments",
+								"99999"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "api_url",
+			"value": "{{base_url}}/api",
+			"type": "string"
+		},
+		{
+			"key": "receptionist_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "receptionist_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "patient_id",
+			"value": "3",
+			"type": "string"
+		},
+		{
+			"key": "doctor_id",
+			"value": "4",
+			"type": "string"
+		},
+		{
+			"key": "appointment_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "new_appointment_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "reminder_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "current_date",
+			"value": "2025-06-15",
+			"type": "string"
+		}
+	]
+}

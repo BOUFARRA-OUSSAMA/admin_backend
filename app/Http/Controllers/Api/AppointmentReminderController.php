@@ -90,19 +90,29 @@ class AppointmentReminderController extends Controller
             }
 
             $reminderData = array_merge($request->validated(), [
-                'scheduled_by_user_id' => $user->id
+                'scheduled_by_user_id' => $user->id,
+                'scheduled_for' => $request->reminder_time // Map reminder_time to scheduled_for
             ]);
 
             $result = $this->reminderService->scheduleCustomReminder($appointment, $reminderData);
+
+            if (!$result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message']
+                ], 400);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Custom reminder scheduled successfully',
                 'data' => [
                     'reminder_id' => $result['reminder_id'],
+                    'reminder_ids' => $result['reminder_ids'] ?? [$result['reminder_id']],
                     'appointment_id' => $appointment->id,
                     'scheduled_for' => $request->reminder_time,
                     'channels' => $request->channels,
+                    'total_reminders' => $result['total_reminders'] ?? 1,
                     'scheduled_by' => $user->name
                 ]
             ]);
@@ -203,6 +213,14 @@ class AppointmentReminderController extends Controller
                 $request->reason
             );
 
+            // Check if the service method was successful
+            if (!$result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $result['message'] ?? 'Failed to reschedule reminder'
+                ], 400);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Reminder rescheduled successfully',
@@ -259,7 +277,7 @@ class AppointmentReminderController extends Controller
             $testMessage = $request->test_message ?? "This is a test reminder for appointment on " . 
                           $appointment->appointment_datetime_start->format('Y-m-d H:i');
 
-            $result = $this->reminderService->sendImmediateReminder(
+            $result = $this->reminderService->sendTestReminder(
                 $appointment,
                 $request->channels,
                 $testMessage,

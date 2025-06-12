@@ -181,6 +181,7 @@ class PermissionSeeder extends Seeder
                 'bills:edit',
                 'bills:view-patient',
                 'bills:generate-pdf',
+                'appointments:manage',  // ← Added this permission
                 'reminders:view',
                 'reminders:schedule',
                 'reminders:cancel',

@@ -129,7 +129,7 @@ class ReminderService
     }
 
     /**
-     * Send an immediate reminder (manual override)
+     * Send an immediate reminder (manual override) - supports single channel
      */
     public function sendImmediateReminder(int $appointmentId, string $channel, array $options = []): array
     {
@@ -151,7 +151,9 @@ class ReminderService
                 'custom_message' => $options['message'] ?? null,
                 'include_attachment' => $options['include_attachment'] ?? false,
                 'priority' => $options['priority'] ?? 'normal'
-            ];            // Dispatch the reminder job immediately
+            ];
+
+            // Dispatch the reminder job immediately
             $job = SendAppointmentReminder::dispatch(
                 $appointment->id,
                 $appointment->patient_user_id,
@@ -165,7 +167,9 @@ class ReminderService
                 'user_id' => $appointment->patient_user_id,
                 'channel' => $channel,
                 'options' => $options
-            ]);            // Generate tracking ID for immediate reminder
+            ]);
+
+            // Generate tracking ID for immediate reminder
             $trackingId = 'immediate_reminder_' . $appointmentId . '_' . $channel . '_' . time();
             
             return [
@@ -189,6 +193,69 @@ class ReminderService
                 'message' => 'Failed to send immediate reminder: ' . $e->getMessage(),
                 'appointment_id' => $appointmentId
             ];
+        }
+    }
+
+    /**
+     * Send immediate reminder for testing purposes - supports multiple channels
+     */
+    public function sendTestReminder(Appointment $appointment, array $channels, ?string $customMessage = null, bool $isTest = false): array
+    {
+        try {
+            $sentChannels = [];
+            $failedChannels = [];
+            
+            foreach ($channels as $channel) {
+                try {
+                    // Dispatch immediate reminder job with correct parameters
+                    $job = SendAppointmentReminder::dispatch(
+                        $appointment->id,                                    // appointmentId
+                        $appointment->patient_user_id,                      // userId
+                        $channel,                                           // channel
+                        'test',                                            // reminderType
+                        [                                                  // reminderData
+                            'custom_message' => $customMessage ?? 'Test reminder for your upcoming appointment',
+                            'test_mode' => $isTest,
+                            'priority' => 'normal'
+                        ]
+                    );
+                    
+                    $sentChannels[] = $channel;
+                    
+                    // Log the test reminder
+                    $this->logReminder($appointment->id, $channel, 'test_reminder', 'sent', [
+                        'message' => $customMessage,
+                        'sent_at' => now()
+                    ]);
+                    
+                } catch (\Exception $e) {
+                    $failedChannels[] = [
+                        'channel' => $channel,
+                        'error' => $e->getMessage()
+                    ];
+                    
+                    Log::error("Failed to send test reminder", [
+                        'appointment_id' => $appointment->id,
+                        'channel' => $channel,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+            
+            return [
+                'sent_channels' => $sentChannels,
+                'failed_channels' => $failedChannels,
+                'total_sent' => count($sentChannels),
+                'total_failed' => count($failedChannels)
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error("Critical error in sendImmediateReminder", [
+                'appointment_id' => $appointment->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            throw $e;
         }
     }
 
@@ -219,7 +286,7 @@ class ReminderService
             'sent' => $scheduledReminders->where('status', 'completed')->count(),
             'failed' => $scheduledReminders->where('status', 'failed')->count(),
             'cancelled' => $scheduledReminders->where('status', 'cancelled')->count(),
-            'total_sent' => $reminderLogs->where('status', 'sent')->count(),
+            'total_sent' => $reminderLogs->where('delivery_status', 'sent')->count(),
             'delivery_rate' => $this->calculateDeliveryRate($appointmentId)
         ];
 
@@ -244,7 +311,7 @@ class ReminderService
                     'id' => $log->id,
                     'type' => $log->reminder_type,
                     'channel' => $log->channel,
-                    'status' => $log->status,
+                    'status' => $log->delivery_status,
                     'sent_at' => $log->sent_at,
                     'delivered_at' => $log->delivered_at,
                     'error_message' => $log->error_message
@@ -305,7 +372,7 @@ class ReminderService
         $startDate = $startDate ?? now()->subMonth();
         $endDate = $endDate ?? now();
 
-        $query = ReminderAnalytics::whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+        $query = ReminderAnalytics::whereBetween('analytics_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
         
         if ($userId) {
             $query->where('user_id', $userId);
@@ -331,9 +398,9 @@ class ReminderService
                 'failure_rate' => 0
             ],
             'by_channel' => [],
-            'daily_breakdown' => $analytics->groupBy('date')->map(function ($dayData) {
+            'daily_breakdown' => $analytics->groupBy('analytics_date')->map(function ($dayData) {
                 return [
-                    'date' => $dayData->first()->date,
+                    'date' => $dayData->first()->analytics_date,
                     'sent' => $dayData->sum('reminders_sent'),
                     'delivered' => $dayData->sum('reminders_delivered'),
                     'failed' => $dayData->sum('reminders_failed')
@@ -359,7 +426,7 @@ class ReminderService
                 return $query->where('user_id', $userId);
             })
             ->groupBy('channel')
-            ->selectRaw('channel, count(*) as total, sum(case when status = "sent" then 1 else 0 end) as delivered')
+            ->selectRaw('channel, count(*) as total, sum(case when delivery_status = ? then 1 else 0 end) as delivered', ['sent'])
             ->get();
 
         foreach ($channelStats as $stat) {
@@ -374,6 +441,59 @@ class ReminderService
     }
 
     /**
+     * Get analytics with filters (controller-compatible method)
+     */
+    public function getAnalytics(array $filters = []): array
+    {
+        // Extract parameters from filters
+        $userId = $filters['doctor_id'] ?? null;
+        $startDate = isset($filters['date_from']) ? Carbon::parse($filters['date_from']) : null;
+        $endDate = isset($filters['date_to']) ? Carbon::parse($filters['date_to']) : null;
+        
+        // Handle period-based date ranges
+        if (isset($filters['period']) && !$startDate && !$endDate) {
+            switch ($filters['period']) {
+                case 'day':
+                    $startDate = now()->startOfDay();
+                    $endDate = now()->endOfDay();
+                    break;
+                case 'week':
+                    $startDate = now()->startOfWeek();
+                    $endDate = now()->endOfWeek();
+                    break;
+                case 'month':
+                    $startDate = now()->startOfMonth();
+                    $endDate = now()->endOfMonth();
+                    break;
+                case 'quarter':
+                    $startDate = now()->startOfQuarter();
+                    $endDate = now()->endOfQuarter();
+                    break;
+                case 'year':
+                    $startDate = now()->startOfYear();
+                    $endDate = now()->endOfYear();
+                    break;
+                default:
+                    $startDate = now()->subMonth();
+                    $endDate = now();
+            }
+        }
+        
+        // Call the existing getReminderAnalytics method
+        $analytics = $this->getReminderAnalytics($userId, $startDate, $endDate);
+        
+        // Add channel filtering if specified
+        if (isset($filters['channel'])) {
+            $channel = $filters['channel'];
+            if (isset($analytics['by_channel'][$channel])) {
+                $analytics['filtered_channel'] = $analytics['by_channel'][$channel];
+            }
+        }
+        
+        return $analytics;
+    }
+
+    /**
      * Clean up old reminder data
      */
     public function cleanupOldData(int $daysToKeep = 90): array
@@ -385,7 +505,7 @@ class ReminderService
             $deletedJobs = ScheduledReminderJob::where('created_at', '<', $cutoffDate)
                 ->whereIn('status', ['completed', 'failed', 'cancelled'])
                 ->delete();
-            $deletedAnalytics = ReminderAnalytics::where('date', '<', $cutoffDate->format('Y-m-d'))->delete();
+            $deletedAnalytics = ReminderAnalytics::where('analytics_date', '<', $cutoffDate->format('Y-m-d'))->delete();
 
             Log::info("Reminder data cleanup completed", [
                 'cutoff_date' => $cutoffDate,
@@ -617,7 +737,7 @@ class ReminderService
                     'id' => $log->id,
                     'type' => $log->reminder_type,
                     'channel' => $log->channel,
-                    'status' => $log->status,
+                    'status' => $log->delivery_status,
                     'sent_at' => $log->sent_at,
                     'delivered_at' => $log->delivered_at,
                     'error_message' => $log->error_message,
@@ -630,15 +750,10 @@ class ReminderService
     /**
      * Schedule a custom reminder for an appointment
      */
-    public function scheduleCustomReminder(int $appointmentId, array $reminderData): array
+    public function scheduleCustomReminder(Appointment $appointment, array $reminderData): array
     {
         try {
             DB::beginTransaction();
-
-            $appointment = Appointment::find($appointmentId);
-            if (!$appointment) {
-                throw new \InvalidArgumentException('Appointment not found');
-            }
 
             // Validate timing
             $scheduledFor = Carbon::parse($reminderData['scheduled_for']);
@@ -650,47 +765,65 @@ class ReminderService
                 throw new \InvalidArgumentException('Reminder must be scheduled before the appointment');
             }
 
-            // Create scheduled reminder job
-            $scheduledReminder = ScheduledReminderJob::create([
-                'appointment_id' => $appointmentId,
-                'user_id' => $appointment->patient_user_id,
-                'reminder_type' => $reminderData['type'] ?? 'custom',
-                'channel' => $reminderData['channel'],
-                'scheduled_for' => $scheduledFor,
-                'status' => 'pending',
-                'custom_message' => $reminderData['message'] ?? null,
-                'priority' => $reminderData['priority'] ?? 'normal'
-            ]);
+            // Get channels array (support both single channel and multiple channels)
+            $channels = isset($reminderData['channels']) ? $reminderData['channels'] : [$reminderData['channel']];
+            $scheduledReminders = [];
 
-            // Dispatch the reminder job
-            SendAppointmentReminder::dispatch(
-                $appointmentId,
-                $appointment->patient_user_id,
-                $reminderData['channel'],
-                $reminderData['type'] ?? 'custom',
-                $reminderData
-            )->delay($scheduledFor);
+            // Create scheduled reminder job for each channel
+            foreach ($channels as $channel) {
+                // Generate unique job ID
+                $jobId = 'reminder_' . $appointment->id . '_' . $channel . '_' . time() . '_' . uniqid();
+                
+                $scheduledReminder = ScheduledReminderJob::create([
+                    'appointment_id' => $appointment->id,
+                    'job_id' => $jobId,
+                    'reminder_type' => $reminderData['type'] ?? $reminderData['reminder_type'] ?? 'custom',
+                    'channel' => $channel,
+                    'scheduled_for' => $scheduledFor,
+                    'status' => 'pending',
+                    'job_payload' => [
+                        'custom_message' => $reminderData['message'] ?? null,
+                        'priority' => $reminderData['priority'] ?? 'normal',
+                        'scheduled_by_user_id' => $reminderData['scheduled_by_user_id'] ?? null
+                    ]
+                ]);
+
+                // Dispatch the reminder job
+                SendAppointmentReminder::dispatch(
+                    $appointment->id,
+                    $appointment->patient_user_id,
+                    $channel,
+                    $reminderData['type'] ?? $reminderData['reminder_type'] ?? 'custom',
+                    $reminderData
+                )->delay($scheduledFor);
+
+                $scheduledReminders[] = $scheduledReminder;
+            }
 
             DB::commit();
 
             Log::info("Custom reminder scheduled", [
-                'appointment_id' => $appointmentId,
+                'appointment_id' => $appointment->id,
                 'scheduled_for' => $scheduledFor,
-                'channel' => $reminderData['channel']
+                'channels' => $channels,
+                'reminder_count' => count($scheduledReminders)
             ]);
 
             return [
                 'success' => true,
                 'message' => 'Custom reminder scheduled successfully',
-                'reminder_id' => $scheduledReminder->id,
-                'scheduled_for' => $scheduledFor
+                'reminder_id' => $scheduledReminders[0]->id, // Return first reminder ID for compatibility
+                'reminder_ids' => array_map(fn($r) => $r->id, $scheduledReminders),
+                'scheduled_for' => $scheduledFor,
+                'channels_scheduled' => $channels,
+                'total_reminders' => count($scheduledReminders)
             ];
 
         } catch (\Exception $e) {
             DB::rollBack();
             
             Log::error("Failed to schedule custom reminder", [
-                'appointment_id' => $appointmentId,
+                'appointment_id' => $appointment->id,
                 'error' => $e->getMessage()
             ]);
 
@@ -749,7 +882,7 @@ class ReminderService
     /**
      * Reschedule a specific reminder
      */
-    public function rescheduleReminder(int $reminderId, string $newDateTime): array
+    public function rescheduleReminder(int $reminderId, string $newDateTime, ?int $userId = null, ?string $reason = null): array
     {
         try {
             DB::beginTransaction();
@@ -774,19 +907,45 @@ class ReminderService
             }
 
             $oldScheduledFor = $reminder->scheduled_for;
-            $reminder->update([
-                'scheduled_for' => $newScheduledFor
-            ]);
+            
+            // Update the reminder with new schedule and metadata
+            $updateData = ['scheduled_for' => $newScheduledFor];
+            if ($reason) {
+                // Safely handle job_payload which might be string, array, or null
+                $payload = $reminder->job_payload;
+                if (is_string($payload)) {
+                    $payload = json_decode($payload, true) ?? [];
+                } elseif (!is_array($payload)) {
+                    $payload = [];
+                }
+                
+                $payload['reschedule_reason'] = $reason;
+                $payload['rescheduled_by_user_id'] = $userId;
+                $payload['rescheduled_at'] = now()->toISOString();
+                $updateData['job_payload'] = $payload;
+            }
+            
+            $reminder->update($updateData);
 
             // Re-dispatch the job with new timing
+            $appointment = Appointment::find($reminder->appointment_id);
+            
+            // Safely handle job_payload which might be string, array, or null
+            $jobPayload = $reminder->job_payload;
+            if (is_string($jobPayload)) {
+                $jobPayload = json_decode($jobPayload, true) ?? [];
+            } elseif (!is_array($jobPayload)) {
+                $jobPayload = [];
+            }
+            
             SendAppointmentReminder::dispatch(
                 $reminder->appointment_id,
-                $reminder->user_id,
+                $appointment->patient_user_id,  // Get user_id from appointment since ScheduledReminderJob doesn't have user_id
                 $reminder->channel,
                 $reminder->reminder_type,
                 [
-                    'custom_message' => $reminder->custom_message,
-                    'priority' => $reminder->priority
+                    'custom_message' => $jobPayload['custom_message'] ?? null,
+                    'priority' => $jobPayload['priority'] ?? 'normal'
                 ]
             )->delay($newScheduledFor);
 
@@ -795,13 +954,16 @@ class ReminderService
             Log::info("Reminder rescheduled", [
                 'reminder_id' => $reminderId,
                 'old_time' => $oldScheduledFor,
-                'new_time' => $newScheduledFor
+                'new_time' => $newScheduledFor,
+                'rescheduled_by_user_id' => $userId,
+                'reason' => $reason
             ]);
 
             return [
                 'success' => true,
                 'message' => 'Reminder rescheduled successfully',
                 'reminder_id' => $reminderId,
+                'old_time' => $oldScheduledFor,
                 'new_scheduled_time' => $newScheduledFor
             ];
 
@@ -844,11 +1006,11 @@ class ReminderService
         $deliveryStatus = [
             'appointment_id' => $appointmentId,
             'total_sent' => $reminderLogs->count(),
-            'failed_count' => $reminderLogs->where('status', 'failed')->count(),
+            'failed_count' => $reminderLogs->where('delivery_status', 'failed')->count(),
             'total_scheduled' => $scheduledReminders->count(),
             'summary' => [
-                'delivered' => $reminderLogs->where('status', 'sent')->count(),
-                'failed' => $reminderLogs->where('status', 'failed')->count(),
+                'delivered' => $reminderLogs->where('delivery_status', 'sent')->count(),
+                'failed' => $reminderLogs->where('delivery_status', 'failed')->count(),
                 'pending' => $scheduledReminders->where('status', 'pending')->count(),
                 'cancelled' => $scheduledReminders->where('status', 'cancelled')->count()
             ],
@@ -859,7 +1021,7 @@ class ReminderService
                 return [
                     'id' => $log->id,
                     'channel' => $log->channel,
-                    'status' => $log->status,
+                    'status' => $log->delivery_status,
                     'sent_at' => $log->sent_at,
                     'delivered_at' => $log->delivered_at,
                     'error_message' => $log->error_message
@@ -870,10 +1032,10 @@ class ReminderService
             $channelLogs = $reminderLogs->where('channel', $channel);
             $deliveryStatus['breakdown'][$channel] = [
                 'total' => $channelLogs->count(),
-                'delivered' => $channelLogs->where('status', 'sent')->count(),
-                'failed' => $channelLogs->where('status', 'failed')->count(),
+                'delivered' => $channelLogs->where('delivery_status', 'sent')->count(),
+                'failed' => $channelLogs->where('delivery_status', 'failed')->count(),
                 'rate' => $channelLogs->count() > 0 ? 
-                    round(($channelLogs->where('status', 'sent')->count() / $channelLogs->count()) * 100, 2) : 0
+                    round(($channelLogs->where('delivery_status', 'sent')->count() / $channelLogs->count()) * 100, 2) : 0
             ];
         }
 
@@ -1128,5 +1290,63 @@ class ReminderService
     public function cancelAppointmentReminders(int $appointmentId, string $reason = 'manual_cancellation'): array
     {
         return $this->cancelReminders($appointmentId, $reason);
+    }
+
+    /**
+     * Log a reminder activity to the database
+     */
+    public function logReminder(int $appointmentId, string $channel, string $reminderType, string $status, array $data = []): ?ReminderLog
+    {
+        try {
+            $appointment = Appointment::find($appointmentId);
+            if (!$appointment) {
+                Log::warning("Cannot log reminder for non-existent appointment", [
+                    'appointment_id' => $appointmentId,
+                    'channel' => $channel,
+                    'reminder_type' => $reminderType,
+                    'status' => $status
+                ]);
+                return null;
+            }
+
+            // Create the reminder log entry
+            $reminderLog = ReminderLog::create([
+                'appointment_id' => $appointmentId,
+                'user_id' => $appointment->patient_user_id,
+                'reminder_type' => $reminderType,
+                'channel' => $channel,
+                'trigger_type' => 'manual', // Default for logged reminders
+                'delivery_status' => $status,
+                'sent_at' => $data['sent_at'] ?? now(),
+                'message_content' => $data['message'] ?? null,
+                'metadata' => array_merge([
+                    'logged_at' => now()->toISOString(),
+                    'log_source' => 'reminder_service'
+                ], $data),
+                'job_id' => $data['job_id'] ?? 'manual_' . time() . '_' . uniqid()
+            ]);
+
+            Log::info("Reminder activity logged", [
+                'reminder_log_id' => $reminderLog->id,
+                'appointment_id' => $appointmentId,
+                'channel' => $channel,
+                'reminder_type' => $reminderType,
+                'status' => $status
+            ]);
+
+            return $reminderLog;
+
+        } catch (\Exception $e) {
+            Log::error("Failed to log reminder activity", [
+                'appointment_id' => $appointmentId,
+                'channel' => $channel,
+                'reminder_type' => $reminderType,
+                'status' => $status,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return null;
+        }
     }
 }

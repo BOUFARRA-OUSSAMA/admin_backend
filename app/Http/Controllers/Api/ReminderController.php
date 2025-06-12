@@ -170,19 +170,46 @@ class ReminderController extends Controller
 
             $appointment = Appointment::findOrFail($request->appointment_id);
             
-            $result = $this->reminderService->sendImmediateReminder(
-                $appointment, 
-                $request->channels,
-                'Test reminder sent by ' . Auth::user()->name
-            );
+            $sentChannels = [];
+            $failedChannels = [];
+            
+            // Call the service method for each channel since it expects single channel
+            foreach ($request->channels as $channel) {
+                try {
+                    $result = $this->reminderService->sendImmediateReminder(
+                        $appointment->id, 
+                        $channel,
+                        [
+                            'message' => 'Test reminder sent by ' . Auth::user()->name,
+                            'type' => 'test'
+                        ]
+                    );
+                    
+                    if ($result['success']) {
+                        $sentChannels[] = $channel;
+                    } else {
+                        $failedChannels[] = [
+                            'channel' => $channel,
+                            'error' => $result['message']
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    $failedChannels[] = [
+                        'channel' => $channel,
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => 'Test reminder sent successfully',
                 'data' => [
                     'appointment_id' => $appointment->id,
-                    'sent_channels' => $result['sent_channels'],
-                    'failed_channels' => $result['failed_channels']
+                    'sent_channels' => $sentChannels,
+                    'failed_channels' => $failedChannels,
+                    'total_sent' => count($sentChannels),
+                    'total_failed' => count($failedChannels)
                 ]
             ]);
 
@@ -204,11 +231,14 @@ class ReminderController extends Controller
             $validator = Validator::make($request->all(), [
                 'appointment_id' => 'sometimes|exists:appointments,id',
                 'user_id' => 'sometimes|exists:users,id',
-                'delivery_status' => 'sometimes|in:pending,sent,failed,cancelled',
+                'delivery_status' => 'sometimes|in:pending,sent,delivered,failed,cancelled',
+                'status' => 'sometimes|in:pending,sent,delivered,failed,cancelled', // Alias for delivery_status
                 'reminder_type' => 'sometimes|in:24_hour,2_hour,custom',
                 'channel' => 'sometimes|in:email,sms,push,in_app',
                 'date_from' => 'sometimes|date',
                 'date_to' => 'sometimes|date|after_or_equal:date_from',
+                'start_date' => 'sometimes|date', // Alias for date_from
+                'end_date' => 'sometimes|date|after_or_equal:start_date', // Alias for date_to
                 'per_page' => 'sometimes|integer|min:1|max:100'
             ]);
 
@@ -223,6 +253,17 @@ class ReminderController extends Controller
             $filters = $validator->validated();
             $perPage = $filters['per_page'] ?? 15;
             unset($filters['per_page']);
+
+            // Handle parameter aliases
+            if (isset($filters['status']) && !isset($filters['delivery_status'])) {
+                $filters['delivery_status'] = $filters['status'];
+            }
+            if (isset($filters['start_date']) && !isset($filters['date_from'])) {
+                $filters['date_from'] = $filters['start_date'];
+            }
+            if (isset($filters['end_date']) && !isset($filters['date_to'])) {
+                $filters['date_to'] = $filters['end_date'];
+            }
 
             $logs = ReminderLog::query()
                 ->with(['appointment.patient', 'appointment.doctor'])
@@ -271,6 +312,22 @@ class ReminderController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get reminder logs with filters (alias method for route compatibility)
+     */
+    public function getReminderLogs(Request $request): JsonResponse
+    {
+        return $this->getLogs($request);
+    }
+
+    /**
+     * Get reminder analytics (alias method for route compatibility)
+     */
+    public function getReminderAnalytics(Request $request): JsonResponse
+    {
+        return $this->getAnalytics($request);
     }
 
     /**
