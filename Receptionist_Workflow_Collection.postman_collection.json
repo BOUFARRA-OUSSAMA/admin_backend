@@ -170,7 +170,7 @@
 									}
 								],
 								"url": {
-									"raw": "{{api_url}}/appointments?date={{current_date}}&status=confirmed&upcoming=true",
+									"raw": "{{api_url}}/appointments?status=confirmed&patient_id=&search=&upcoming=true",
 									"host": [
 										"{{api_url}}"
 									],
@@ -181,7 +181,8 @@
 										{
 											"key": "date",
 											"value": "{{current_date}}",
-											"description": "Filter by specific date (YYYY-MM-DD)"
+											"description": "Filter by specific date (YYYY-MM-DD)",
+											"disabled": true
 										},
 										{
 											"key": "status",
@@ -191,8 +192,7 @@
 										{
 											"key": "patient_id",
 											"value": "",
-											"description": "Filter by patient ID",
-											"disabled": true
+											"description": "Filter by patient ID"
 										},
 										{
 											"key": "doctor_id",
@@ -203,8 +203,7 @@
 										{
 											"key": "search",
 											"value": "",
-											"description": "Search in patient/doctor names",
-											"disabled": true
+											"description": "Search in patient/doctor names"
 										},
 										{
 											"key": "upcoming",
@@ -484,7 +483,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"new_datetime_start\": \"2025-06-16 10:00:00\",\n  \"new_datetime_end\": \"2025-06-16 10:30:00\",\n  \"reason\": \"Doctor schedule change\",\n  \"notes_by_staff\": \"Rescheduled due to doctor availability\"\n}"
+									"raw": "{\n  \"new_datetime_start\": \"2025-06-18 15:00:00\",\n  \"new_datetime_end\": \"2025-06-18 15:30:00\",\n  \"reason\": \"Doctor schedule change\",\n  \"notes_by_staff\": \"Rescheduled due to doctor availability\"\n}"
 								},
 								"url": {
 									"raw": "{{api_url}}/appointments/{{appointment_id}}/reschedule",
@@ -819,7 +818,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"channels\": [\"sms\"],\n  \"reminder_time\": \"2025-06-15\", \n  \"custom_message\": \"Special instructions: Please fast for 12 hours before your appointment\",\n  \"priority\": \"normal\"\n}"
+									"raw": "{\n  \"channels\": [\"sms\"],\n  \"reminder_time\": \"2025-06-16\", \n  \"custom_message\": \"Special instructions: Please fast for 12 hours before your appointment\",\n  \"priority\": \"normal\"\n}"
 								},
 								"url": {
 									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/custom",
@@ -877,7 +876,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"new_reminder_time\": 45,\n  \"reason\": \"Changed to 45 minutes before\"\n}"
+									"raw": "{\n  \"new_reminder_time\": \"2025-06-15 10:30:00\",\n  \"reason\": \"Changed to 45 minutes before\"\n}"
 								},
 								"url": {
 									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/{{reminder_id}}/reschedule",
@@ -911,7 +910,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"channel\": \"email\",\n  \"test_message\": \"This is a test reminder to verify delivery\"\n}"
+									"raw": "{\n  \"channels\": [\"email\"],\n  \"test_message\": \"This is a test reminder to verify delivery\"\n}"
 								},
 								"url": {
 									"raw": "{{api_url}}/appointments/{{appointment_id}}/reminders/test",
