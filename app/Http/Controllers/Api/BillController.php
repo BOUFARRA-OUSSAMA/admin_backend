@@ -61,6 +61,8 @@ class BillController extends Controller
             'patient_id',
             'date_from',
             'date_to',
+            'from_date',  // Add support for alternative naming
+            'to_date',    // Add support for alternative naming
             'preset_period',
             'amount_min',
             'amount_max',
@@ -69,6 +71,14 @@ class BillController extends Controller
             'sort_by',
             'sort_direction'
         ]);
+        
+        // Normalize date parameter names
+        if (isset($filters['from_date']) && !isset($filters['date_from'])) {
+            $filters['date_from'] = $filters['from_date'];
+        }
+        if (isset($filters['to_date']) && !isset($filters['date_to'])) {
+            $filters['date_to'] = $filters['to_date'];
+        }
         
         // Process date filters including preset periods
         $filters = $this->dateFilterService->processDates($filters, $request->header('Timezone'));
