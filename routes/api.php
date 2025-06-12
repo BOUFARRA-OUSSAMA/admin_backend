@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientAppointmentController;
 use App\Http\Controllers\Api\DoctorAppointmentController;
+use App\Http\Controllers\Api\DoctorPatientController;
 use App\Http\Controllers\Api\PersonalInfoController;
 use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\AppointmentReminderController;
@@ -218,6 +219,55 @@ Route::group(['middleware' => ['jwt.auth']], function () {
                 ->middleware(['permission:patients:edit']);
         });
     });
+
+    // MEDICAL RECORDS API ROUTES
+    Route::group(['middleware' => ['jwt.auth']], function () {
+        
+        // Patient Medical Data - Comprehensive endpoints
+        Route::prefix('patients/{patient}/medical')->group(function () {
+            Route::get('/summary', [App\Http\Controllers\Api\PatientMedicalController::class, 'summary']);
+            Route::get('/vitals', [App\Http\Controllers\Api\PatientMedicalController::class, 'vitals']);
+            Route::get('/medications', [App\Http\Controllers\Api\PatientMedicalController::class, 'medications']);
+            Route::get('/lab-results', [App\Http\Controllers\Api\PatientMedicalController::class, 'labResults']);
+            Route::get('/medical-history', [App\Http\Controllers\Api\PatientMedicalController::class, 'medicalHistory']);
+            Route::get('/timeline', [App\Http\Controllers\Api\PatientMedicalController::class, 'timeline']);
+            Route::get('/files', [App\Http\Controllers\Api\PatientMedicalController::class, 'files']);
+            Route::get('/notes', [App\Http\Controllers\Api\PatientMedicalController::class, 'notes']);
+            Route::get('/alerts', [App\Http\Controllers\Api\PatientMedicalController::class, 'alerts']);
+            Route::get('/statistics', [App\Http\Controllers\Api\PatientMedicalController::class, 'statistics']);
+        });
+
+        // Patient Medical Data - Legacy endpoint for backwards compatibility
+        Route::get('patients/{patient}/medical-data', [PatientController::class, 'getMedicalData']);
+
+        // Vital Signs Management
+        Route::apiResource('vital-signs', App\Http\Controllers\Api\VitalSignController::class);
+
+        // Medications Management  
+        Route::apiResource('medications', App\Http\Controllers\Api\MedicationController::class);
+        Route::post('medications/{medication}/discontinue', [App\Http\Controllers\Api\MedicationController::class, 'discontinue']);
+
+        // Lab Results Management
+        Route::apiResource('lab-results', App\Http\Controllers\Api\LabResultController::class);
+        Route::get('patients/{patient}/lab-results/{testName}/history', [App\Http\Controllers\Api\LabResultController::class, 'history']);
+
+        // Patient Files Management
+        Route::apiResource('patient-files', App\Http\Controllers\Api\PatientFileController::class);
+        Route::get('patient-files/{file}/download', [App\Http\Controllers\Api\PatientFileController::class, 'download'])->name('patient-files.download');
+        Route::get('patient-files-categories', [App\Http\Controllers\Api\PatientFileController::class, 'categories']);
+
+        // Patient Notes Management
+        Route::apiResource('patient-notes', App\Http\Controllers\Api\PatientNoteController::class);
+        Route::get('patient-note-types', [App\Http\Controllers\Api\PatientNoteController::class, 'types']);
+
+        // Timeline Events (Read-only)
+        Route::apiResource('timeline-events', App\Http\Controllers\Api\TimelineEventController::class, [
+            'only' => ['index', 'show']
+        ]);
+
+        // Patient Alerts Management
+        Route::apiResource('patient-alerts', App\Http\Controllers\Api\PatientAlertController::class);
+    });
 });
 
 // AI Diagnostic routes 
@@ -230,6 +280,20 @@ Route::group(['middleware' => ['jwt.auth', 'permission:ai:use'], 'prefix' => 'ai
 Route::group(['middleware' => ['jwt.auth', 'permission:patients:view-medical']], function () {
     Route::get('/patients/{patient}/ai-analyses', [AiDiagnosticController::class, 'getPatientAnalyses']);
     Route::get('/ai-analyses/{analysis}', [AiDiagnosticController::class, 'getAnalysis']);
+});
+
+// DOCTOR PATIENT MANAGEMENT ROUTES - Phase 1
+Route::group(['middleware' => ['jwt.auth']], function () {
+    
+    // Doctor Patient Management
+    Route::prefix('doctor/patients')->group(function () {
+        Route::get('/my-patients', [App\Http\Controllers\Api\DoctorPatientController::class, 'getMyPatients']);
+        Route::get('/{patient}/summary', [App\Http\Controllers\Api\DoctorPatientController::class, 'getPatientSummary']);
+        Route::get('/search', [App\Http\Controllers\Api\DoctorPatientController::class, 'searchPatients']);
+        Route::get('/alerts/critical', [App\Http\Controllers\Api\DoctorPatientController::class, 'getCriticalAlerts']);
+        Route::get('/dashboard/stats', [App\Http\Controllers\Api\DoctorPatientController::class, 'getDashboardStats']);
+        Route::get('/activity/recent', [App\Http\Controllers\Api\DoctorPatientController::class, 'getRecentActivity']);
+    });
 });
 
 // REMINDER MANAGEMENT ROUTES

@@ -29,6 +29,9 @@ class DatabaseSeeder extends Seeder
             PatientSeeder::class,
             DoctorSpecialtySeeder::class,
             
+            // Medical data (NEW) - Must run AFTER patients and doctors
+            MedicalDataSeeder::class,
+            
             // Appointment-related data
             AppointmentSeeder::class,
             BlockedTimeSlotsSeeder::class,

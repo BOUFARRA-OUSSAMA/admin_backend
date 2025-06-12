@@ -43,6 +43,70 @@ class Patient extends Model
     }
 
     /**
+     * Get vital signs for the patient
+     */
+    public function vitalSigns(): HasMany
+    {
+        return $this->hasMany(VitalSign::class);
+    }
+
+    /**
+     * Get medications (prescriptions) for the patient - DIRECT RELATIONSHIP
+     */
+    public function medications(): HasMany
+    {
+        return $this->hasMany(Medication::class);
+    }
+
+    /**
+     * Get medical histories for the patient
+     */
+    public function medicalHistories(): HasMany
+    {
+        return $this->hasMany(MedicalHistory::class);
+    }
+
+    /**
+     * Get lab results for the patient
+     */
+    public function labResults(): HasMany
+    {
+        return $this->hasMany(LabResult::class);
+    }
+
+    /**
+     * Get patient notes
+     */
+    public function patientNotes(): HasMany
+    {
+        return $this->hasMany(PatientNote::class);
+    }
+
+    /**
+     * Get patient alerts
+     */
+    public function patientAlerts(): HasMany
+    {
+        return $this->hasMany(PatientAlert::class);
+    }
+
+    /**
+     * Get timeline events for the patient
+     */
+    public function timelineEvents(): HasMany
+    {
+        return $this->hasMany(TimelineEvent::class);
+    }
+
+    /**
+     * Get patient files
+     */
+    public function patientFiles(): HasMany
+    {
+        return $this->hasMany(PatientFile::class);
+    }
+
+    /**
      * Get upcoming appointments for this patient.
      */
     public function upcomingAppointments()
@@ -151,5 +215,142 @@ class Patient extends Model
         return $query->whereHas('user', function($q) {
             $q->where('status', 'active');
         });
+    }
+
+    /**
+     * Get comprehensive patient summary for dashboard
+     */
+    public function getPatientSummary(): array
+    {
+        // Load necessary relationships
+        $this->load([
+            'personalInfo',
+            'vitalSigns' => function($query) {
+                $query->latest()->limit(5);
+            },
+            'medications' => function($query) {
+                $query->where('status', 'active')->latest();
+            },
+            'medicalHistories',
+            'labResults' => function($query) {
+                $query->latest()->limit(10);
+            },
+            'patientNotes' => function($query) {
+                $query->where('is_private', false)->latest()->limit(5);
+            },
+            'patientAlerts' => function($query) {
+                $query->where('is_active', true)->orderBy('severity', 'desc');
+            },
+            'timelineEvents' => function($query) {
+                $query->where('is_visible_to_patient', true)->latest()->limit(10);
+            },
+            'patientFiles' => function($query) {
+                $query->latest()->limit(10);
+            }
+        ]);
+
+        // Get upcoming and recent appointments
+        $upcomingAppointments = $this->upcomingAppointments()->limit(5)->get();
+        $recentAppointments = $this->appointmentHistory()->limit(5)->get();
+
+        // Calculate statistics
+        $stats = $this->calculatePatientStats();
+
+        return [
+            // Basic patient information
+            'basic_info' => [
+                'id' => $this->id,
+                'user_id' => $this->user_id,
+                'full_name' => $this->full_name,
+                'email' => $this->email,
+                'phone' => $this->phone,
+                'age' => $this->age,
+                'gender' => $this->gender,
+                'registration_date' => $this->registration_date->format('Y-m-d'),
+            ],
+
+            // Statistics overview
+            'statistics' => $stats,
+
+            // Recent vital signs
+            'recent_vitals' => $this->vitalSigns->map(function($vital) {
+                return $vital->toFrontendFormat();
+            }),
+
+            // Active medications
+            'active_medications' => $this->medications->map(function($medication) {
+                return $medication->toFrontendFormat();
+            }),
+
+            // Medical history summary
+            'medical_history' => $this->medicalHistories->map(function($history) {
+                return $history->toFrontendFormat();
+            }),
+
+            // Recent lab results
+            'recent_lab_results' => $this->labResults->map(function($result) {
+                return $result->toFrontendFormat();
+            }),
+
+            // Active alerts
+            'active_alerts' => $this->patientAlerts->map(function($alert) {
+                return $alert->toFrontendFormat();
+            }),
+
+            // Recent notes (non-private)
+            'recent_notes' => $this->patientNotes->map(function($note) {
+                return $note->toFrontendFormat();
+            }),
+
+            // Timeline events
+            'timeline_events' => $this->timelineEvents->map(function($event) {
+                return $event->toFrontendFormat();
+            }),
+
+            // Recent files
+            'recent_files' => $this->patientFiles->map(function($file) {
+                return $file->toFrontendFormat();
+            }),
+
+            // Appointments
+            'appointments' => [
+                'upcoming' => $upcomingAppointments->map(function($appointment) {
+                    return [
+                        'id' => $appointment->id,
+                        'date' => $appointment->appointment_datetime_start,
+                        'doctor' => $appointment->doctor->user->name ?? 'Unknown Doctor',
+                        'status' => $appointment->status,
+                        'type' => $appointment->appointment_type ?? 'consultation'
+                    ];
+                }),
+                'recent' => $recentAppointments->map(function($appointment) {
+                    return [
+                        'id' => $appointment->id,
+                        'date' => $appointment->appointment_datetime_start,
+                        'doctor' => $appointment->doctor->user->name ?? 'Unknown Doctor',
+                        'status' => $appointment->status,
+                        'type' => $appointment->appointment_type ?? 'consultation'
+                    ];
+                })
+            ]
+        ];
+    }
+
+    /**
+     * Calculate patient statistics
+     */
+    private function calculatePatientStats(): array
+    {
+        return [
+            'total_appointments' => $this->appointments()->count(),
+            'upcoming_appointments' => $this->upcomingAppointments()->count(),
+            'active_medications' => $this->medications()->where('status', 'active')->count(),
+            'active_alerts' => $this->patientAlerts()->where('is_active', true)->count(),
+            'total_files' => $this->patientFiles()->count(),
+            'recent_vitals_count' => $this->vitalSigns()->where('recorded_at', '>=', now()->subDays(30))->count(),
+            'lab_results_this_year' => $this->labResults()->whereYear('result_date', now()->year)->count(),
+            'last_visit' => optional($this->appointmentHistory()->first())->appointment_datetime_start,
+            'next_appointment' => optional($this->nextAppointment())->appointment_datetime_start,
+        ];
     }
 }
