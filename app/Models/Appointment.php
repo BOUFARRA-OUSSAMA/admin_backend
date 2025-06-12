@@ -54,6 +54,7 @@ class Appointment extends Model
     const STATUS_CANCELLED_BY_PATIENT = 'cancelled_by_patient';
     const STATUS_CANCELLED_BY_CLINIC = 'cancelled_by_clinic';
     const STATUS_NO_SHOW = 'no_show';
+    const STATUS_RESCHEDULED = 'rescheduled';
 
     public static function getStatuses(): array
     {
@@ -64,6 +65,7 @@ class Appointment extends Model
             self::STATUS_CANCELLED_BY_PATIENT,
             self::STATUS_CANCELLED_BY_CLINIC,
             self::STATUS_NO_SHOW,
+            self::STATUS_RESCHEDULED,
         ];
     }
 

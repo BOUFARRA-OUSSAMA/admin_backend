@@ -127,9 +127,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('patient/bills/{bill}/receipt', [BillController::class, 'downloadBillReceiptForPatient'])->name('patient.bills.receipt.download');
 
     // APPOINTMENT MANAGEMENT ROUTES
-    // ->middleware(['permission:appointments:manage'])
     // ADMIN/RECEPTIONIST APPOINTMENT ROUTES - Updated permissions
-    Route::prefix('appointments')->group(function () {
+    Route::prefix('appointments')->middleware(['permission:appointments:manage'])->group(function () {
         Route::get('/', [AppointmentController::class, 'index']);                    // GET /api/appointments
         Route::post('/', [AppointmentController::class, 'store']);                   // POST /api/appointments
         Route::get('/{id}', [AppointmentController::class, 'show']);                 // GET /api/appointments/{id}
@@ -140,7 +139,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::post('/{id}/cancel', [AppointmentController::class, 'cancel']);       // POST /api/appointments/{id}/cancel
         Route::post('/{id}/confirm', [AppointmentController::class, 'confirm']);     // POST /api/appointments/{id}/confirm
         Route::post('/{id}/complete', [AppointmentController::class, 'complete']);   // POST /api/appointments/{id}/complete
-        Route::post('/{id}/reschedule', [AppointmentController::class, 'reschedule']); // ✅ ADD THIS
+        Route::post('/{id}/reschedule', [AppointmentController::class, 'reschedule']); // POST /api/appointments/{id}/reschedule
     
         // Available slots
         Route::get('/slots/available', [AppointmentController::class, 'availableSlots']); // GET /api/appointments/slots/available

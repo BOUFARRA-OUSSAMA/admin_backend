@@ -590,15 +590,17 @@ class DoctorAppointmentService
         }
 
         // Check if new time slot is available
-        $conflicts = $this->checkTimeConflicts(
-            $doctor->id,
-            $rescheduleData['new_datetime_start'],
-            $rescheduleData['new_datetime_end'],
-            $appointment->id // Exclude current appointment
-        );
-
-        if ($conflicts) {
-            throw new Exception('The requested time slot is not available');
+        $conflictData = [
+            'doctor_user_id' => $doctor->id,
+            'appointment_datetime_start' => $rescheduleData['new_datetime_start'],
+            'appointment_datetime_end' => $rescheduleData['new_datetime_end']
+        ];
+        
+        // Use the injected AppointmentService to check for conflicts
+        try {
+            $this->appointmentService->checkForConflicts($conflictData, $appointment->id);
+        } catch (Exception $e) {
+            throw new Exception('The requested time slot is not available: ' . $e->getMessage());
         }
 
         // Update appointment
@@ -610,7 +612,16 @@ class DoctorAppointmentService
         ]);
 
         // Log activity
-        $this->logActivity('appointment_rescheduled', $appointment, $doctor);
+        activity()
+            ->causedBy($doctor)
+            ->performedOn($appointment)
+            ->withProperties([
+                'old_datetime_start' => $appointment->getOriginal('appointment_datetime_start'),
+                'old_datetime_end' => $appointment->getOriginal('appointment_datetime_end'),
+                'new_datetime_start' => $rescheduleData['new_datetime_start'],
+                'new_datetime_end' => $rescheduleData['new_datetime_end'],
+            ])
+            ->log('appointment_rescheduled');
 
         return $appointment->fresh(['patient', 'doctor']);
     }

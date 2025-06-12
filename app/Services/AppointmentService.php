@@ -158,12 +158,17 @@ class AppointmentService
             // Store original data for comparison
             $originalData = $appointment->toArray();
             
-            // Validate new data
-            $this->validateAppointmentData($data, $appointment->id);
+            // Validate new data (pass existing appointment for context)
+            $this->validateAppointmentData($data, $appointment->id, $appointment);
             
             // Check for conflicts if time/date changed
             if ($this->hasTimeChanged($appointment, $data)) {
-                $this->checkForConflicts($data, $appointment->id);
+                // Ensure we have doctor ID for conflict checking
+                $conflictCheckData = $data;
+                if (!isset($conflictCheckData['doctor_user_id']) && !isset($conflictCheckData['doctor_id'])) {
+                    $conflictCheckData['doctor_user_id'] = $appointment->doctor_user_id;
+                }
+                $this->checkForConflicts($conflictCheckData, $appointment->id);
             }
             
             // Update appointment
@@ -397,16 +402,13 @@ class AppointmentService
     public function rescheduleAppointment(User $user, Appointment $appointment, array $rescheduleData): Appointment
     {
         // Check if new time slot is available
-        $conflicts = $this->checkTimeConflicts(
-            $appointment->doctor_user_id,
-            $rescheduleData['new_datetime_start'],
-            $rescheduleData['new_datetime_end'],
-            $appointment->id // Exclude current appointment
-        );
-
-        if ($conflicts) {
-            throw new Exception('The requested time slot is not available');
-        }
+        $conflictData = [
+            'doctor_user_id' => $appointment->doctor_user_id,
+            'appointment_datetime_start' => $rescheduleData['new_datetime_start'],
+            'appointment_datetime_end' => $rescheduleData['new_datetime_end']
+        ];
+        
+        $this->checkForConflicts($conflictData, $appointment->id);
 
         // Update appointment
         $appointment->update([
@@ -417,7 +419,16 @@ class AppointmentService
         ]);
 
         // Log activity
-        $this->logActivity('appointment_rescheduled_by_staff', $appointment, $user);
+        activity()
+            ->causedBy($user)
+            ->performedOn($appointment)
+            ->withProperties([
+                'old_datetime_start' => $appointment->getOriginal('appointment_datetime_start'),
+                'old_datetime_end' => $appointment->getOriginal('appointment_datetime_end'),
+                'new_datetime_start' => $rescheduleData['new_datetime_start'],
+                'new_datetime_end' => $rescheduleData['new_datetime_end'],
+            ])
+            ->log('appointment_rescheduled_by_staff');
 
         return $appointment->fresh(['patient', 'doctor']);
     }
@@ -425,10 +436,13 @@ class AppointmentService
     /**
      * Private helper methods
      */
-    private function validateAppointmentData(array $data, ?int $excludeAppointmentId = null): void
+    private function validateAppointmentData(array $data, ?int $excludeAppointmentId = null, ?Appointment $existingAppointment = null): void
     {
-        $patientId = $data['patient_user_id'] ?? $data['patient_id'] ?? null;
-        $doctorId = $data['doctor_user_id'] ?? $data['doctor_id'] ?? null;
+        // For updates, use existing appointment's IDs if not provided in request
+        $patientId = $data['patient_user_id'] ?? $data['patient_id'] ?? 
+                    ($existingAppointment ? $existingAppointment->patient_user_id : null);
+        $doctorId = $data['doctor_user_id'] ?? $data['doctor_id'] ?? 
+                   ($existingAppointment ? $existingAppointment->doctor_user_id : null);
 
         if (empty($patientId)) {
             throw new Exception('Patient ID is required');
@@ -438,30 +452,39 @@ class AppointmentService
             throw new Exception('Doctor ID is required');
         }
 
-        if (empty($data['appointment_datetime_start'])) {
+        // Only validate appointment time if it's being changed
+        if (isset($data['appointment_datetime_start']) && empty($data['appointment_datetime_start'])) {
             throw new Exception('Appointment start time is required');
         }
 
-        // Validate patient exists
-        $patient = User::find($patientId);
-        if (!$patient || !$patient->isPatient()) {
-            throw new Exception('Invalid patient ID');
+        // Validate patient exists (only if we have a patient ID to check)
+        if ($patientId) {
+            $patient = User::find($patientId);
+            if (!$patient || !$patient->isPatient()) {
+                throw new Exception('Invalid patient ID');
+            }
         }
 
-        // Validate doctor exists
-        $doctor = User::find($doctorId);
-        if (!$doctor || !$doctor->isDoctor()) {
-            throw new Exception('Invalid doctor ID');
+        // Validate doctor exists (only if we have a doctor ID to check)
+        if ($doctorId) {
+            $doctor = User::find($doctorId);
+            if (!$doctor || !$doctor->isDoctor()) {
+                throw new Exception('Invalid doctor ID');
+            }
         }
 
-        // Validate appointment time is in the future
-        $appointmentTime = Carbon::parse($data['appointment_datetime_start']);
-        if ($appointmentTime <= now()) {
-            throw new Exception('Appointment time must be in the future');
+        // Validate appointment time is in the future (only if time is being updated)
+        if (isset($data['appointment_datetime_start'])) {
+            $appointmentTime = Carbon::parse($data['appointment_datetime_start']);
+            // For updates, allow appointments to be scheduled for current time or future
+            // (in case we're confirming an appointment that's about to start)
+            if ($appointmentTime < now()->subMinutes(5)) {
+                throw new Exception('Appointment time must not be in the past');
+            }
         }
     }
 
-    private function checkForConflicts(array $data, ?int $excludeAppointmentId = null): void
+    public function checkForConflicts(array $data, ?int $excludeAppointmentId = null): void
     {
         $doctorId = $data['doctor_user_id'] ?? $data['doctor_id'];
         $startTime = Carbon::parse($data['appointment_datetime_start']);
