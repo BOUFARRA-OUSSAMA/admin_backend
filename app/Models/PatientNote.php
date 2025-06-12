@@ -37,6 +37,14 @@ class PatientNote extends Model
     }
 
     /**
+     * Get the user who created the note (alias for doctor relationship).
+     */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'doctor_id');
+    }
+
+    /**
      * Transform note for frontend display.
      */
     public function toFrontendFormat(bool $isPatientView = false): array
@@ -54,7 +62,8 @@ class PatientNote extends Model
             'isPrivate' => $this->is_private,
             'createdAt' => $this->created_at->toISOString(),
             'updatedAt' => $this->updated_at->toISOString(),
-            'doctorName' => $this->doctor?->name,
+            'doctorName' => $this->createdBy?->name ?? $this->doctor?->name,
+            'createdBy' => $this->createdBy?->name ?? $this->doctor?->name,
             'canEdit' => !$isPatientView, // Only doctors can edit
         ];
     }

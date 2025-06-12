@@ -1,1102 +1,1415 @@
 {
-  "info": {
-    "name": "Medical Records API - Complete Testing Collection",
-    "description": "Comprehensive API testing for the Medical Records Management System",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "version": "1.0.0"
-  },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8000",
-      "type": "string"
-    },
-    {
-      "key": "api_url",
-      "value": "{{base_url}}/api",
-      "type": "string"
-    },
-    {
-      "key": "doctor_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "patient_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "admin_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "patient_id",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "doctor_id",
-      "value": "2",
-      "type": "string"
-    }
-  ],
-  "item": [
-    {
-      "name": "🔑 Authentication",
-      "item": [
-        {
-          "name": "Login as Doctor",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const responseJson = pm.response.json();",
-                  "    if (responseJson.success && responseJson.data.access_token) {",
-                  "        pm.collectionVariables.set('doctor_token', responseJson.data.access_token);",
-                  "        pm.collectionVariables.set('doctor_id', responseJson.data.user.id);",
-                  "        console.log('Doctor token saved successfully');",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"doctor@example.com\",\n  \"password\": \"password\"\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/auth/login",
-              "host": ["{{api_url}}"],
-              "path": ["auth", "login"]
-            }
-          }
-        },
-        {
-          "name": "Login as Patient",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "if (pm.response.code === 200) {",
-                  "    const responseJson = pm.response.json();",
-                  "    if (responseJson.success && responseJson.data.access_token) {",
-                  "        pm.collectionVariables.set('patient_token', responseJson.data.access_token);",
-                  "        pm.collectionVariables.set('patient_id', responseJson.data.user.patient.id);",
-                  "        console.log('Patient token saved successfully');",
-                  "    }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"patient@example.com\",\n  \"password\": \"password\"\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/auth/login",
-              "host": ["{{api_url}}"],
-              "path": ["auth", "login"]
-            }
-          }
-        },
-        {
-          "name": "Get Current User Info",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/auth/me",
-              "host": ["{{api_url}}"],
-              "path": ["auth", "me"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "📊 Patient Medical Data",
-      "item": [
-        {
-          "name": "Get Patient Medical Summary",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/summary",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "summary"]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Vital Signs",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/vitals?limit=10",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "vitals"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Medications",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/medications",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "medications"]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Lab Results",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/lab-results?limit=10",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "lab-results"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Timeline",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/timeline?limit=20",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "timeline"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Files",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/files",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "files"]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Notes",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/notes",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "notes"]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Alerts",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/alerts",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "alerts"]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Statistics",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/statistics",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "statistics"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🩺 Vital Signs Management",
-      "item": [
-        {
-          "name": "Create Vital Signs",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patient_id\": {{patient_id}},\n  \"blood_pressure_systolic\": 125,\n  \"blood_pressure_diastolic\": 82,\n  \"pulse_rate\": 75,\n  \"temperature\": 98.7,\n  \"respiratory_rate\": 16,\n  \"oxygen_saturation\": 98,\n  \"weight\": 66.0,\n  \"height\": 165.0,\n  \"notes\": \"Patient feeling well, slight increase in weight\"\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/vital-signs",
-              "host": ["{{api_url}}"],
-              "path": ["vital-signs"]
-            }
-          }
-        },
-        {
-          "name": "Get All Vital Signs",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/vital-signs?patient_id={{patient_id}}&limit=10",
-              "host": ["{{api_url}}"],
-              "path": ["vital-signs"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "💊 Medications Management",
-      "item": [
-        {
-          "name": "Create Medication",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patient_id\": {{patient_id}},\n  \"medication_name\": \"Metformin\",\n  \"dosage\": \"500mg\",\n  \"frequency\": \"twice daily\",\n  \"route\": \"oral\",\n  \"start_date\": \"2025-06-11\",\n  \"duration_days\": 90,\n  \"refills_allowed\": 3,\n  \"notes\": \"Take with meals to reduce stomach upset. Monitor blood glucose levels.\"\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/medications",
-              "host": ["{{api_url}}"],
-              "path": ["medications"]
-            }
-          }
-        },
-        {
-          "name": "Get All Medications",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/medications?patient_id={{patient_id}}",
-              "host": ["{{api_url}}"],
-              "path": ["medications"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Discontinue Medication",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"reason\": \"Patient developed side effects\",\n  \"notes\": \"Patient reported dizziness and fatigue. Switching to alternative medication.\"\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/medications/1/discontinue",
-              "host": ["{{api_url}}"],
-              "path": ["medications", "1", "discontinue"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🧪 Lab Results Management",
-      "item": [
-        {
-          "name": "Create Lab Result",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patient_id\": {{patient_id}},\n  \"lab_test_name\": \"Lipid Panel\",\n  \"result_date\": \"2025-06-10\",\n  \"structured_results\": {\n    \"test_name\": \"Lipid Panel\",\n    \"results\": [\n      {\n        \"parameter\": \"Total Cholesterol\",\n        \"value\": \"195\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \"<200\",\n        \"status\": \"normal\"\n      },\n      {\n        \"parameter\": \"LDL Cholesterol\",\n        \"value\": \"120\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \"<100\",\n        \"status\": \"high\"\n      },\n      {\n        \"parameter\": \"HDL Cholesterol\",\n        \"value\": \"45\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \">40\",\n        \"status\": \"normal\"\n      },\n      {\n        \"parameter\": \"Triglycerides\",\n        \"value\": \"150\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \"<150\",\n        \"status\": \"borderline\"\n      }\n    ]\n  },\n  \"interpretation\": \"LDL cholesterol slightly elevated. Recommend dietary modifications and recheck in 3 months.\",\n  \"status\": \"completed\"\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/lab-results",
-              "host": ["{{api_url}}"],
-              "path": ["lab-results"]
-            }
-          }
-        },
-        {
-          "name": "Get All Lab Results",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/lab-results?patient_id={{patient_id}}",
-              "host": ["{{api_url}}"],
-              "path": ["lab-results"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "📝 Patient Notes Management",
-      "item": [
-        {
-          "name": "Create Patient Note",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patient_id\": {{patient_id}},\n  \"note_type\": \"treatment\",\n  \"title\": \"Treatment Plan Update\",\n  \"content\": \"Based on recent lab results, adjusting treatment plan:\\n\\n1. Continue Lisinopril 10mg daily\\n2. Add Metformin 500mg twice daily\\n3. Dietary consultation scheduled\\n4. Follow-up in 6 weeks\\n\\nPatient counseled on lifestyle modifications including diet and exercise.\",\n  \"is_private\": false,\n  \"tags\": [\"treatment-plan\", \"medication-adjustment\", \"lifestyle\"]\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/patient-notes",
-              "host": ["{{api_url}}"],
-              "path": ["patient-notes"]
-            }
-          }
-        },
-        {
-          "name": "Get All Patient Notes",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patient-notes?patient_id={{patient_id}}",
-              "host": ["{{api_url}}"],
-              "path": ["patient-notes"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Note Types",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patient-note-types",
-              "host": ["{{api_url}}"],
-              "path": ["patient-note-types"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🚨 Patient Alerts Management",
-      "item": [
-        {
-          "name": "Create Patient Alert",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"patient_id\": {{patient_id}},\n  \"alert_type\": \"drug_interaction\",\n  \"title\": \"Drug Interaction Warning\",\n  \"message\": \"Patient is taking Lisinopril and Metformin. Monitor for potential hypoglycemic episodes, especially during initial treatment phase.\",\n  \"severity\": \"medium\",\n  \"is_active\": true,\n  \"expires_at\": \"2025-09-11T00:00:00Z\"\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/patient-alerts",
-              "host": ["{{api_url}}"],
-              "path": ["patient-alerts"]
-            }
-          }
-        },
-        {
-          "name": "Get All Patient Alerts",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patient-alerts?patient_id={{patient_id}}",
-              "host": ["{{api_url}}"],
-              "path": ["patient-alerts"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "📁 File Upload & Management",
-      "item": [
-        {
-          "name": "Upload Medical Image (Patient)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{patient_token}}"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}",
-                  "type": "text"
-                },
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "category",
-                  "value": "xray",
-                  "type": "text"
-                },
-                {
-                  "key": "description",
-                  "value": "Chest X-ray for follow-up examination",
-                  "type": "text"
-                },
-                {
-                  "key": "file_type",
-                  "value": "image",
-                  "type": "text"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{api_url}}/patient-files",
-              "host": ["{{api_url}}"],
-              "path": ["patient-files"]
-            }
-          }
-        },
-        {
-          "name": "Upload Medical Document (Patient)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{patient_token}}"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}",
-                  "type": "text"
-                },
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "category",
-                  "value": "lab_report",
-                  "type": "text"
-                },
-                {
-                  "key": "description",
-                  "value": "Blood work results from external lab",
-                  "type": "text"
-                },
-                {
-                  "key": "file_type",
-                  "value": "document",
-                  "type": "text"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{api_url}}/patient-files",
-              "host": ["{{api_url}}"],
-              "path": ["patient-files"]
-            }
-          }
-        },
-        {
-          "name": "Get File Categories",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patient-files-categories",
-              "host": ["{{api_url}}"],
-              "path": ["patient-files-categories"]
-            }
-          }
-        },
-        {
-          "name": "Get All Patient Files",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patient-files?patient_id={{patient_id}}",
-              "host": ["{{api_url}}"],
-              "path": ["patient-files"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Download File",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patient-files/1/download",
-              "host": ["{{api_url}}"],
-              "path": ["patient-files", "1", "download"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "📈 Timeline Events",
-      "item": [
-        {
-          "name": "Get Timeline Events",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/timeline-events?patient_id={{patient_id}}&limit=20",
-              "host": ["{{api_url}}"],
-              "path": ["timeline-events"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                },
-                {
-                  "key": "limit",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Timeline Event Details",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/timeline-events/1",
-              "host": ["{{api_url}}"],
-              "path": ["timeline-events", "1"]
-            }
-          }
-        },
-        {
-          "name": "Get Timeline Summary",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/timeline-events/summary?patient_id={{patient_id}}&days=30",
-              "host": ["{{api_url}}"],
-              "path": ["timeline-events", "summary"],
-              "query": [
-                {
-                  "key": "patient_id",
-                  "value": "{{patient_id}}"
-                },
-                {
-                  "key": "days",
-                  "value": "30"
-                }
-              ]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "👨‍⚕️ Doctor Patient Management",
-      "item": [
-        {
-          "name": "Get Doctor's Patients",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/doctor/patients/my-patients?limit=10",
-              "host": ["{{api_url}}"],
-              "path": ["doctor", "patients", "my-patients"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Search Doctor's Patients",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/doctor/patients/search?search=jane&limit=10",
-              "host": ["{{api_url}}"],
-              "path": ["doctor", "patients", "search"],
-              "query": [
-                {
-                  "key": "search",
-                  "value": "jane"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Patient Summary (Doctor View)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/doctor/patients/{{patient_id}}/summary",
-              "host": ["{{api_url}}"],
-              "path": ["doctor", "patients", "{{patient_id}}", "summary"]
-            }
-          }
-        },
-        {
-          "name": "Get Critical Alerts",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/doctor/patients/alerts/critical",
-              "host": ["{{api_url}}"],
-              "path": ["doctor", "patients", "alerts", "critical"]
-            }
-          }
-        },
-        {
-          "name": "Get Dashboard Statistics",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/doctor/patients/dashboard/stats",
-              "host": ["{{api_url}}"],
-              "path": ["doctor", "patients", "dashboard", "stats"]
-            }
-          }
-        },
-        {
-          "name": "Get Recent Activity",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/doctor/patients/activity/recent",
-              "host": ["{{api_url}}"],
-              "path": ["doctor", "patients", "activity", "recent"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🧪 Patient-Side Testing",
-      "item": [
-        {
-          "name": "Patient Views Own Medical Summary",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{patient_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/summary",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "summary"]
-            }
-          }
-        },
-        {
-          "name": "Patient Cannot Access Doctor Endpoints",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{patient_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/doctor/patients/my-patients",
-              "host": ["{{api_url}}"],
-              "path": ["doctor", "patients", "my-patients"]
-            }
-          }
-        },
-        {
-          "name": "Patient Cannot Access Other Patients' Data",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{patient_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/999/medical/summary",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "999", "medical", "summary"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "🔒 Error Handling Tests",
-      "item": [
-        {
-          "name": "Invalid Patient ID",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{api_url}}/patients/999/medical/summary",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "999", "medical", "summary"]
-            }
-          }
-        },
-        {
-          "name": "Missing Required Fields",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{doctor_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"blood_pressure_systolic\": 120\n}"
-            },
-            "url": {
-              "raw": "{{api_url}}/vital-signs",
-              "host": ["{{api_url}}"],
-              "path": ["vital-signs"]
-            }
-          }
-        },
-        {
-          "name": "Unauthorized Access",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{api_url}}/patients/{{patient_id}}/medical/summary",
-              "host": ["{{api_url}}"],
-              "path": ["patients", "{{patient_id}}", "medical", "summary"]
-            }
-          }
-        }
-      ]
-    }
-  ]
+	"info": {
+		"_postman_id": "d73874f8-92c0-4957-8907-3233a6347370",
+		"name": "Medical Records API - Complete Testing Collection",
+		"description": "Comprehensive API testing for the Medical Records Management System",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30471774"
+	},
+	"item": [
+		{
+			"name": "🔑 Authentication",
+			"item": [
+				{
+					"name": "Login as Doctor",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.success && responseJson.data.access_token) {",
+									"        pm.collectionVariables.set('doctor_token', responseJson.data.access_token);",
+									"        pm.collectionVariables.set('doctor_id', responseJson.data.user.id);",
+									"        console.log('Doctor token saved successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"doctor@example.com\",\n  \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/auth/login",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login as Patient",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.success && responseJson.data.access_token) {",
+									"        pm.collectionVariables.set('patient_token', responseJson.data.access_token);",
+									"        pm.collectionVariables.set('patient_id', responseJson.data.user.patient.id);",
+									"        console.log('Patient token saved successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"patient@example.com\",\n  \"password\": \"password\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/auth/login",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/auth/me",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"auth",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 Patient Medical Data",
+			"item": [
+				{
+					"name": "Get Patient Medical Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/summary",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"summary"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Vital Signs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/vitals?limit=10",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"vitals"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Medications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/medications",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"medications"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Lab Results",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/3/medical/lab-results?limit=10",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"3",
+								"medical",
+								"lab-results"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Timeline",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/timeline?limit=20",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"timeline"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Files",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/files",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"files"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Notes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/notes",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"notes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Alerts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/alerts",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"alerts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/statistics",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"statistics"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🩺 Vital Signs Management",
+			"item": [
+				{
+					"name": "Create Vital Signs",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patient_id\": {{patient_id}},\n  \"blood_pressure_systolic\": 120,\n  \"blood_pressure_diastolic\": 80,\n  \"pulse_rate\": 72,\n  \"temperature\": 36.5,\n  \"temperature_unit\": \"°C\",\n  \"respiratory_rate\": 16,\n  \"oxygen_saturation\": 98,\n  \"weight\": 65.5,\n  \"weight_unit\": \"kg\",\n  \"height\": 165.0,\n  \"height_unit\": \"cm\",\n  \"recorded_at\": \"2025-06-10T09:00:00Z\",\n  \"notes\": \"Normal vital signs - all parameters within normal ranges\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/vital-signs",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"vital-signs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Vital Signs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/vital-signs?patient_id={{patient_id}}&limit=10",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"vital-signs"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "{{patient_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💊 Medications Management",
+			"item": [
+				{
+					"name": "Create Medication",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patient_id\": {{patient_id}},\n  \"medication_name\": \"Metformin\",\n  \"dosage\": \"500mg\",\n  \"frequency\": \"twice daily\",\n  \"route\": \"oral\",\n  \"start_date\": \"2025-06-11\",\n  \"duration_days\": 90,\n  \"refills_allowed\": 3,\n  \"notes\": \"Take with meals to reduce stomach upset. Monitor blood glucose levels.\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/medications",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"medications"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Medications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/medications?patient_id={{patient_id}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"medications"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "{{patient_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Discontinue Medication",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Patient developed side effects\",\n  \"notes\": \"Patient reported dizziness and fatigue. Switching to alternative medication.\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/medications/1/discontinue",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"medications",
+								"1",
+								"discontinue"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🧪 Lab Results Management",
+			"item": [
+				{
+					"name": "Create Lab Result",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patient_id\": {{patient_id}},\n  \"lab_test_name\": \"Lipid Panel\",\n  \"result_date\": \"2025-06-10\",\n  \"test_name\": \"Lipid Panel\",\n  \"structured_results\": {\n    \"results\": [\n      {\n        \"parameter\": \"Total Cholesterol\",\n        \"value\": \"195\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \"<200\",\n        \"status\": \"normal\"\n      },\n      {\n        \"parameter\": \"LDL Cholesterol\",\n        \"value\": \"120\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \"<100\",\n        \"status\": \"high\"\n      },\n      {\n        \"parameter\": \"HDL Cholesterol\",\n        \"value\": \"45\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \">40\",\n        \"status\": \"normal\"\n      },\n      {\n        \"parameter\": \"Triglycerides\",\n        \"value\": \"150\",\n        \"unit\": \"mg/dL\",\n        \"reference_range\": \"<150\",\n        \"status\": \"borderline\"\n      }\n    ]\n  },\n  \"interpretation\": \"LDL cholesterol slightly elevated. Recommend dietary modifications and recheck in 3 months.\",\n  \"status\": \"completed\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/lab-results",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"lab-results"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Lab Results",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/lab-results?patient_id={{patient_id}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"lab-results"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "{{patient_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📝 Patient Notes Management",
+			"item": [
+				{
+					"name": "Create Patient Note",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patient_id\": {{patient_id}},\n  \"note_type\": \"treatment\",\n  \"title\": \"Treatment Plan Update\",\n  \"content\": \"Based on recent lab results, adjusting treatment plan:\\n\\n1. Continue Lisinopril 10mg daily\\n2. Add Metformin 500mg twice daily\\n3. Dietary consultation scheduled\\n4. Follow-up in 6 weeks\\n\\nPatient counseled on lifestyle modifications including diet and exercise.\",\n  \"is_private\": false,\n  \"tags\": [\"treatment-plan\", \"medication-adjustment\", \"lifestyle\"]\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/patient-notes",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-notes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Patient Notes",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patient-notes?patient_id={{patient_id}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-notes"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "{{patient_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Note Types",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patient-note-types",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-note-types"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🚨 Patient Alerts Management",
+			"item": [
+				{
+					"name": "Create Patient Alert",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patient_id\": {{patient_id}},\n  \"alert_type\": \"drug_interaction\",\n  \"title\": \"Drug Interaction Warning\",\n  \"message\": \"Patient is taking Lisinopril and Metformin. Monitor for potential hypoglycemic episodes, especially during initial treatment phase.\",\n  \"severity\": \"medium\",\n  \"is_active\": true,\n  \"expires_at\": \"2025-09-11T00:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/patient-alerts",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-alerts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Patient Alerts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patient-alerts?patient_id={{patient_id}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-alerts"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "{{patient_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📁 File Upload & Management",
+			"item": [
+				{
+					"name": "Upload Medical Image (Patient)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{patient_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "patient_id",
+									"value": "3",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "xray",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Chest X-ray for follow-up examination",
+									"type": "text"
+								},
+								{
+									"key": "file_type",
+									"value": "image",
+									"type": "text"
+								},
+								{
+									"key": "title",
+									"value": "test upload",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/C:/Users/Sefanos/Desktop/Pulse/Uncommon.png"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{api_url}}/patient-files",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-files"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Medical Document (Patient)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{patient_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "patient_id",
+									"value": "3",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/C:/Users/Sefanos/Desktop/Pulse/Uncommon.png",
+									"disabled": true
+								},
+								{
+									"key": "category",
+									"value": "lab_report",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Blood work results from external lab",
+									"type": "text"
+								},
+								{
+									"key": "file_type",
+									"value": "document",
+									"type": "text"
+								},
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/C:/Users/Sefanos/Desktop/Pulse/Uncommon.png"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{api_url}}/patient-files",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-files"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get File Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patient-files-categories",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-files-categories"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Patient Files",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patient-files?patient_id=3",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-files"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "3"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Download File",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patient-files/1998/download",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patient-files",
+								"1998",
+								"download"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📈 Timeline Events",
+			"item": [
+				{
+					"name": "Get Timeline Events",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/timeline-events?patient_id={{patient_id}}&limit=20",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"timeline-events"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "{{patient_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Timeline Event Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/timeline-events/{{patient_token}}",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"timeline-events",
+								"{{patient_token}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Timeline Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/timeline-events/summary?patient_id={{patient_id}}&days=30",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"timeline-events",
+								"summary"
+							],
+							"query": [
+								{
+									"key": "patient_id",
+									"value": "{{patient_id}}"
+								},
+								{
+									"key": "days",
+									"value": "30"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👨‍⚕️ Doctor Patient Management",
+			"item": [
+				{
+					"name": "Get Doctor's Patients",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/doctor/patients/my-patients?limit=10",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"doctor",
+								"patients",
+								"my-patients"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Doctor's Patients",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/doctor/patients/search?search=jane&limit=10",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"doctor",
+								"patients",
+								"search"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "jane"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient Summary (Doctor View)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/doctor/patients/{{patient_id}}/summary",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"doctor",
+								"patients",
+								"{{patient_id}}",
+								"summary"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Critical Alerts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/doctor/patients/alerts/critical",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"doctor",
+								"patients",
+								"alerts",
+								"critical"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Dashboard Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/doctor/patients/dashboard/stats",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"doctor",
+								"patients",
+								"dashboard",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recent Activity",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/doctor/patients/activity/recent",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"doctor",
+								"patients",
+								"activity",
+								"recent"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🧪 Patient-Side Testing",
+			"item": [
+				{
+					"name": "Patient Views Own Medical Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{patient_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/summary",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"summary"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patient Cannot Access Doctor Endpoints",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{patient_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/doctor/patients/my-patients",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"doctor",
+								"patients",
+								"my-patients"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patient Cannot Access Other Patients' Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{patient_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/999/medical/summary",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"999",
+								"medical",
+								"summary"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔒 Error Handling Tests",
+			"item": [
+				{
+					"name": "Invalid Patient ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{api_url}}/patients/999/medical/summary",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"999",
+								"medical",
+								"summary"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Missing Required Fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{doctor_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"blood_pressure_systolic\": 120\n}"
+						},
+						"url": {
+							"raw": "{{api_url}}/vital-signs",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"vital-signs"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unauthorized Access",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{api_url}}/patients/{{patient_id}}/medical/summary",
+							"host": [
+								"{{api_url}}"
+							],
+							"path": [
+								"patients",
+								"{{patient_id}}",
+								"medical",
+								"summary"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "api_url",
+			"value": "{{base_url}}/api",
+			"type": "string"
+		},
+		{
+			"key": "doctor_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "patient_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "patient_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "doctor_id",
+			"value": "2",
+			"type": "string"
+		}
+	]
 }

@@ -232,27 +232,34 @@ class TimelineEventController extends Controller
                 }
             }
 
-            $query = TimelineEvent::where('patient_id', $patientId)
-                ->where('event_date', '>=', now()->subDays($days));
-
-            // For patients, filter to only visible events
+            // Build base query conditions
+            $baseWhere = [
+                ['patient_id', '=', $patientId],
+                ['event_date', '>=', now()->subDays($days)]
+            ];
+            
+            // Add patient visibility filter if needed
             if ($user->isPatient()) {
-                $query->where('is_visible_to_patient', true);
+                $baseWhere[] = ['is_visible_to_patient', '=', true];
             }
 
-            // Get summary statistics
-            $totalEvents = $query->count();
-            $eventsByType = $query->groupBy('event_type')
+            // Get summary statistics - each query must be independent
+            $totalEvents = TimelineEvent::where($baseWhere)->count();
+            
+            $eventsByType = TimelineEvent::where($baseWhere)
+                ->groupBy('event_type')
                 ->selectRaw('event_type, count(*) as count')
                 ->pluck('count', 'event_type')
                 ->toArray();
 
-            $eventsByImportance = $query->groupBy('importance')
+            $eventsByImportance = TimelineEvent::where($baseWhere)
+                ->groupBy('importance')
                 ->selectRaw('importance, count(*) as count')
                 ->pluck('count', 'importance')
                 ->toArray();
 
-            $recentEvents = $query->orderBy('event_date', 'desc')
+            $recentEvents = TimelineEvent::where($baseWhere)
+                ->orderBy('event_date', 'desc')
                 ->limit(5)
                 ->get()
                 ->map(function($event) use ($user) {

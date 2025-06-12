@@ -97,6 +97,23 @@ class LabResult extends Model
     {
         $simplified = [];
         
+        // Handle new structure with 'results' array
+        if (isset($results['results']) && is_array($results['results'])) {
+            foreach ($results['results'] as $result) {
+                if (is_array($result) && isset($result['parameter'])) {
+                    $simplified[] = [
+                        'name' => $result['parameter'],
+                        'value' => $result['value'] ?? null,
+                        'unit' => $result['unit'] ?? null,
+                        'referenceRange' => $result['reference_range'] ?? null,
+                        'status' => $result['status'] ?? 'normal',
+                    ];
+                }
+            }
+            return $simplified;
+        }
+        
+        // Handle legacy structure (key-value pairs)
         foreach ($results as $key => $value) {
             if (is_array($value)) {
                 // Handle nested results

@@ -55,30 +55,43 @@ class VitalSign extends Model
      */
     public function toFrontendFormat(): array
     {
+        // Format blood pressure reading
+        $systolic = $this->blood_pressure_systolic;
+        $diastolic = $this->blood_pressure_diastolic;
+        $bpReading = '';
+        
+        if ($systolic && $diastolic) {
+            $bpReading = $systolic . '/' . $diastolic;
+        } elseif ($systolic) {
+            $bpReading = $systolic . '/-';
+        } elseif ($diastolic) {
+            $bpReading = '-/' . $diastolic;
+        }
+        
         return [
             'id' => $this->id,
             'bloodPressure' => [
-                'systolic' => $this->blood_pressure_systolic,
-                'diastolic' => $this->blood_pressure_diastolic,
-                'reading' => $this->blood_pressure_systolic . '/' . $this->blood_pressure_diastolic,
+                'systolic' => $systolic,
+                'diastolic' => $diastolic,
+                'reading' => $bpReading,
             ],
             'pulseRate' => $this->pulse_rate,
             'temperature' => [
                 'value' => $this->temperature,
                 'unit' => $this->temperature_unit,
-                'display' => $this->temperature . $this->temperature_unit,
+                'display' => $this->temperature . ($this->temperature_unit ? $this->temperature_unit : ''),
             ],
             'respiratoryRate' => $this->respiratory_rate,
             'oxygenSaturation' => $this->oxygen_saturation,
             'weight' => [
                 'value' => $this->weight,
                 'unit' => $this->weight_unit,
-                'display' => $this->weight . ' ' . $this->weight_unit,
+                'display' => $this->weight . ($this->weight_unit ? ' ' . $this->weight_unit : ''),
             ],
             'height' => [
                 'value' => $this->height,
                 'unit' => $this->height_unit,
-                'display' => $this->height . ' ' . $this->height_unit,
+                'display' => $this->height . ($this->height_unit ? ' ' . $this->height_unit : ''),
             ],
             'notes' => $this->notes,
             'recordedAt' => $this->recorded_at->toISOString(),

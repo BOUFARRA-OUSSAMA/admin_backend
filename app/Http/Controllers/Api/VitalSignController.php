@@ -81,18 +81,18 @@ class VitalSignController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'patient_id' => 'required|exists:patients,id',
-                'recorded_at' => 'required|date',
+                'recorded_at' => 'sometimes|date',
                 'blood_pressure_systolic' => 'nullable|numeric|min:0|max:300',
                 'blood_pressure_diastolic' => 'nullable|numeric|min:0|max:200',
                 'pulse_rate' => 'nullable|numeric|min:0|max:300',
                 'temperature' => 'nullable|numeric|min:30|max:45',
-                'temperature_unit' => 'nullable|string|in:°C,°F,C,F',
+                'temperature_unit' => 'sometimes|string|in:°C,°F,C,F',
                 'respiratory_rate' => 'nullable|numeric|min:0|max:100',
                 'oxygen_saturation' => 'nullable|numeric|min:0|max:100',
                 'weight' => 'nullable|numeric|min:0|max:1000',
-                'weight_unit' => 'nullable|string|in:kg,lbs',
+                'weight_unit' => 'sometimes|string|in:kg,lbs',
                 'height' => 'nullable|numeric|min:0|max:300',
-                'height_unit' => 'nullable|string|in:cm,in,ft',
+                'height_unit' => 'sometimes|string|in:cm,in,ft',
                 'notes' => 'nullable|string|max:1000'
             ]);
 
@@ -109,23 +109,37 @@ class VitalSignController extends Controller
 
             $patient = Patient::findOrFail($request->patient_id);
             
-            $vitalSign = VitalSign::create([
+            $vitalSignData = [
                 'patient_id' => $patient->id,
-                'recorded_at' => $request->recorded_at,
                 'blood_pressure_systolic' => $request->blood_pressure_systolic,
                 'blood_pressure_diastolic' => $request->blood_pressure_diastolic,
                 'pulse_rate' => $request->pulse_rate,
                 'temperature' => $request->temperature,
-                'temperature_unit' => $request->temperature_unit,
                 'respiratory_rate' => $request->respiratory_rate,
                 'oxygen_saturation' => $request->oxygen_saturation,
                 'weight' => $request->weight,
-                'weight_unit' => $request->weight_unit,
                 'height' => $request->height,
-                'height_unit' => $request->height_unit,
                 'notes' => $request->notes,
                 'recorded_by_user_id' => $user->id
-            ]);
+            ];
+
+            // Only set recorded_at if provided, otherwise use database default
+            if ($request->has('recorded_at')) {
+                $vitalSignData['recorded_at'] = $request->recorded_at;
+            }
+
+            // Only set units if provided, otherwise use database defaults
+            if ($request->has('temperature_unit')) {
+                $vitalSignData['temperature_unit'] = $request->temperature_unit;
+            }
+            if ($request->has('weight_unit')) {
+                $vitalSignData['weight_unit'] = $request->weight_unit;
+            }
+            if ($request->has('height_unit')) {
+                $vitalSignData['height_unit'] = $request->height_unit;
+            }
+
+            $vitalSign = VitalSign::create($vitalSignData);
 
             // Create timeline event
             $this->timelineEventService->createVitalSignsEvent($vitalSign);
