@@ -151,7 +151,7 @@
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ $item->description ?: 'N/A' }}</td>
                     <td>{{ $item->service_type ? str_replace('_', ' ', $item->service_type) : 'N/A' }}</td>
-                    <td class="text-right">{{ number_format($item->price, 2, ',', ' ') }} €</td>
+                    <td class="text-right">{{ number_format($item->price, 2, ',', ' ') }} MAD</td>
                 </tr>
             @empty
                 <tr>
