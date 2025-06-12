@@ -44,6 +44,11 @@ class PermissionSeeder extends Seeder
                 ['name' => 'Delete Patients', 'code' => 'patients:delete'],
                 ['name' => 'View Patient Medical Data', 'code' => 'patients:view-medical'],
                 ['name' => 'Edit Patient Medical Data', 'code' => 'patients:edit-medical'],
+                ['name' => 'View Patient Files', 'code' => 'patients:view-files'],
+                ['name' => 'Manage Patient Files', 'code' => 'patients:manage-files'],
+                ['name' => 'View Patient Notes', 'code' => 'patients:view-notes'],
+                ['name' => 'Manage Patient Notes', 'code' => 'patients:manage-notes'],
+                ['name' => 'Manage All Patient Notes', 'code' => 'patients:manage-all-notes'],
             ],
 
             // AI Models
@@ -135,6 +140,10 @@ class PermissionSeeder extends Seeder
                 'patients:edit',
                 'patients:view-medical',
                 'patients:edit-medical',
+                'patients:view-files',
+                'patients:manage-files',
+                'patients:view-notes',
+                'patients:manage-notes',
                 'ai:use',
                 'bills:view',
                 'bills:create',
@@ -181,6 +190,19 @@ class PermissionSeeder extends Seeder
             ])->pluck('id')->toArray();
 
             $receptionistRole->permissions()->sync($receptionistPermissions);
+        }
+
+        // Assign permissions to patient role for their own data
+        $patientRole = Role::where('code', 'patient')->first();
+        if ($patientRole) {
+            $patientPermissions = Permission::whereIn('code', [
+                'patients:view-files',
+                'patients:manage-files',
+                'patients:view-notes',
+                'patients:view-medical'
+            ])->pluck('id')->toArray();
+
+            $patientRole->permissions()->sync($patientPermissions);
         }
     }
 }

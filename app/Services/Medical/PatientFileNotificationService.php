@@ -32,37 +32,13 @@ class PatientFileNotificationService
             // Log error but don't break the upload process
             \Log::error('Failed to send file upload notifications: ' . $e->getMessage());
         }
-    }
-
-    /**
+    }    /**
      * Create in-app notification for file upload.
      */
     private function createInAppNotification(PatientFile $file, $doctors): void
     {
-        $patient = $file->patient;
-        $patientName = $patient->personalInfo->name ?? 'Unknown Patient';
-        
-        $data = [
-            'title' => 'New Patient File Uploaded',
-            'message' => "New {$file->category} file uploaded for patient {$patientName}",
-            'type' => 'file_upload',
-            'action_url' => "/patients/{$patient->id}/files/{$file->id}",
-            'patient_id' => $patient->id,
-            'file_id' => $file->id,
-            'file_category' => $file->category,
-            'patient_name' => $patientName
-        ];
-
-        foreach ($doctors as $doctor) {
-            \App\Models\Notification::create([
-                'user_id' => $doctor->id,
-                'type' => 'file_upload',
-                'title' => $data['title'],
-                'message' => $data['message'],
-                'data' => json_encode($data),
-                'is_read' => false
-            ]);
-        }
+        // This method is now redundant since we're using Laravel notifications
+        // The notification is already sent in notifyDoctorsOfNewFile method
     }
 
     /**
@@ -86,16 +62,8 @@ class PatientFileNotificationService
                 'file_id' => $file->id,
                 'doctor_name' => $doctor->name,
                 'review' => $review
-            ];
-
-            \App\Models\Notification::create([
-                'user_id' => $patientUser->id,
-                'type' => 'file_review',
-                'title' => $data['title'],
-                'message' => $data['message'],
-                'data' => json_encode($data),
-                'is_read' => false
-            ]);
+            ];            // Use Laravel's notification system
+            $patientUser->notify(new \App\Notifications\PatientFileReviewedNotification($file, $doctor, $review));
             
         } catch (\Exception $e) {
             \Log::error('Failed to send file review notification: ' . $e->getMessage());
