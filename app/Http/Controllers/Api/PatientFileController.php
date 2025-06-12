@@ -50,8 +50,10 @@ class PatientFileController extends Controller
 
             $patient = Patient::findOrFail($patientId);
             
-            // Check permissions
-            if (!$user->isPatient() && !$user->hasPermission('patients:view-files')) {
+            // Check permissions for viewing files
+            $canViewFiles = $user->hasPermission('patients:view-files') || $user->isDoctor();
+            
+            if (!$canViewFiles && !$user->isPatient()) {
                 return $this->error('Insufficient permissions', 403);
             }
             
@@ -98,10 +100,8 @@ class PatientFileController extends Controller
             $validator = Validator::make($request->all(), [
                 'patient_id' => 'required|exists:patients,id',
                 'file' => 'required|file|max:25600', // 25MB max
-                'category' => 'required|in:xray,scan,lab_report,insurance,prescription,document,other',
-                'title' => 'required|string|max:255',
-                'description' => 'nullable|string|max:1000',
-                'is_private' => 'sometimes|boolean'
+                'category' => 'required|in:xray,scan,lab_report,insurance,other',
+                'description' => 'required|string|max:1000'
             ]);
 
             if ($validator->fails()) {
@@ -110,13 +110,18 @@ class PatientFileController extends Controller
 
             $user = Auth::user();
             
-            // Check permissions
-            if (!$user->hasPermission('patients:manage-files') && !$user->isDoctor()) {
-                // Patients can only upload to their own records
-                if ($user->isPatient() && $user->patient->id != $request->patient_id) {
-                    return $this->error('Access denied', 403);
-                } elseif (!$user->isPatient()) {
+            // Check permissions for file upload
+            $canManageFiles = $user->hasPermission('patients:manage-files') || $user->isDoctor();
+            
+            if (!$canManageFiles) {
+                // Only patients can upload to their own records if they don't have manage-files permission
+                if (!$user->isPatient()) {
                     return $this->error('Insufficient permissions', 403);
+                }
+                
+                // Patients can only upload to their own records
+                if ($user->patient->id != $request->patient_id) {
+                    return $this->error('Access denied', 403);
                 }
             }
 
@@ -133,15 +138,17 @@ class PatientFileController extends Controller
             // Create file record
             $patientFile = PatientFile::create([
                 'patient_id' => $patient->id,
-                'filename' => $uploadResult['original_name'],
+                'original_filename' => $uploadResult['original_name'],
+                'stored_filename' => basename($uploadResult['file_path']),
                 'file_path' => $uploadResult['file_path'],
                 'file_size' => $uploadResult['file_size'],
                 'mime_type' => $uploadResult['mime_type'],
+                'file_type' => $uploadResult['file_type'],
                 'category' => $request->category,
-                'title' => $request->title,
                 'description' => $request->description,
-                'is_private' => $request->boolean('is_private', false),
-                'uploaded_by_user_id' => $user->id
+                'is_visible_to_patient' => !$request->boolean('is_private', false),
+                'uploaded_by_user_id' => $user->id,
+                'uploaded_at' => now()
             ]);
 
             // Create timeline event
@@ -172,8 +179,10 @@ class PatientFileController extends Controller
             $user = Auth::user();
             $file = PatientFile::with(['patient.personalInfo', 'uploadedBy'])->findOrFail($id);
             
-            // Check permissions
-            if (!$user->isPatient() && !$user->hasPermission('patients:view-files')) {
+            // Check permissions for viewing file details
+            $canViewFiles = $user->hasPermission('patients:view-files') || $user->isDoctor();
+            
+            if (!$canViewFiles && !$user->isPatient()) {
                 return $this->error('Insufficient permissions', 403);
             }
             
@@ -206,8 +215,10 @@ class PatientFileController extends Controller
             $user = Auth::user();
             $file = PatientFile::findOrFail($id);
             
-            // Check permissions
-            if (!$user->isPatient() && !$user->hasPermission('patients:view-files')) {
+            // Check permissions for downloading files
+            $canViewFiles = $user->hasPermission('patients:view-files') || $user->isDoctor();
+            
+            if (!$canViewFiles && !$user->isPatient()) {
                 return $this->error('Insufficient permissions', 403);
             }
             
@@ -226,10 +237,9 @@ class PatientFileController extends Controller
                 return $this->error('File not found on disk', 404);
             }
 
-            // Update download count
-            $file->increment('download_count');
+            // Note: Download count tracking removed due to missing column
 
-            return Storage::disk('local')->download($file->file_path, $file->filename);
+            return Storage::disk('local')->download($file->file_path, $file->original_filename);
             
         } catch (\Exception $e) {
             return $this->error('Failed to download file: ' . $e->getMessage(), 500);
@@ -243,10 +253,9 @@ class PatientFileController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'title' => 'sometimes|string|max:255',
                 'description' => 'nullable|string|max:1000',
-                'category' => 'sometimes|in:xray,scan,lab_report,insurance,prescription,document,other',
-                'is_private' => 'sometimes|boolean'
+                'category' => 'sometimes|in:xray,scan,lab_report,insurance,other',
+                'is_visible_to_patient' => 'sometimes|boolean'
             ]);
 
             if ($validator->fails()) {
@@ -256,17 +265,21 @@ class PatientFileController extends Controller
             $user = Auth::user();
             $file = PatientFile::findOrFail($id);
             
-            // Check permissions
-            if (!$user->hasPermission('patients:manage-files') && !$user->isDoctor()) {
+            // Check permissions for updating files
+            $canManageFiles = $user->hasPermission('patients:manage-files') || $user->isDoctor();
+            
+            if (!$canManageFiles) {
                 // Patients can only edit their own files
-                if ($user->isPatient() && $user->patient->id !== $file->patient_id) {
-                    return $this->error('Access denied', 403);
-                } elseif (!$user->isPatient()) {
+                if (!$user->isPatient()) {
                     return $this->error('Insufficient permissions', 403);
+                }
+                
+                if ($user->patient->id !== $file->patient_id) {
+                    return $this->error('Access denied', 403);
                 }
             }
 
-            $file->update($request->only(['title', 'description', 'category', 'is_private']));
+            $file->update($request->only(['description', 'category', 'is_visible_to_patient']));
 
             return $this->success(
                 $file->fresh()->toFrontendFormat(),
@@ -286,8 +299,10 @@ class PatientFileController extends Controller
         try {
             $user = Auth::user();
             
-            // Check permissions
-            if (!$user->hasPermission('patients:manage-files') && !$user->isDoctor()) {
+            // Check permissions for deleting files
+            $canManageFiles = $user->hasPermission('patients:manage-files') || $user->isDoctor();
+            
+            if (!$canManageFiles) {
                 return $this->error('Insufficient permissions', 403);
             }
 
