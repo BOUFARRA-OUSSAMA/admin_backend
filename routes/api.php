@@ -261,6 +261,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('patient-note-types', [App\Http\Controllers\Api\PatientNoteController::class, 'types']);
 
         // Timeline Events (Read-only)
+        Route::get('timeline-events/summary', [App\Http\Controllers\Api\TimelineEventController::class, 'summary']); // Must be BEFORE apiResource
         Route::apiResource('timeline-events', App\Http\Controllers\Api\TimelineEventController::class, [
             'only' => ['index', 'show']
         ]);
