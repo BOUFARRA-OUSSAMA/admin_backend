@@ -19,7 +19,7 @@ use App\Http\Controllers\Api\PersonalInfoController;
 use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\AppointmentReminderController;
 use App\Http\Controllers\Api\NotificationController;
-
+use App\Http\Controllers\Api\ReceptionistPatientController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -76,7 +76,15 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('activity-logs/modules/{module}', [ActivityLogController::class, 'getModuleLogs']);
     Route::get('activity-logs/actions', [ActivityLogController::class, 'getActions']);
     Route::get('activity-logs/modules', [ActivityLogController::class, 'getModules']);
-
+    // RECEPTIONIST PATIENT MANAGEMENT ROUTES
+    Route::prefix('receptionist')->middleware(['jwt.auth'])->group(function () {
+    Route::apiResource('patients', ReceptionistPatientController::class);
+    
+    // Routes additionnelles spécifiques au réceptionniste si nécessaire
+    Route::get('/patients/search', [ReceptionistPatientController::class, 'search']);
+    Route::get('/patients/recent', [ReceptionistPatientController::class, 'recentPatients']);
+    Route::post('/patients/{patient}/update-status', [ReceptionistPatientController::class, 'updateStatus']);
+});
     // Analytics Routes (with permission middleware)
     Route::group(['middleware' => 'permission:analytics:view'], function () {
         // Existing routes
