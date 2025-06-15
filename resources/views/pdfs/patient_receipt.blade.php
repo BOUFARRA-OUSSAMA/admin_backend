@@ -163,7 +163,7 @@
     </div>
 
     <div class="total-section">
-        <p>Montant Total : {{ number_format($bill->amount, 2, ',', ' ') }} €</p>
+        <p>Montant Total : {{ number_format($bill->amount, 2, ',', ' ') }} MAD</p>
     </div>
 
     <div class="footer">
