@@ -91,7 +91,7 @@ class RoleService
 
         $role->save();
 
-        // Add this section to handle permissions
+        // ✅ ALLOW: Permission sync for all roles (including protected ones)
         if (isset($data['permissions'])) {
             $role->permissions()->sync($data['permissions']);
         }
@@ -108,13 +108,10 @@ class RoleService
     public function deleteRole(int $id): bool
     {
         $role = $this->getRoleById($id);
-
-        // Check if role is protected
-        $protectedRoles = ['admin', 'patient', 'doctor', 'receptionist', 'nurse'];
-        if (in_array($role->code, $protectedRoles)) {
-            return false;
-        }
-
+        
+        // ✅ REMOVED: No more protection against deletion
+        // Previous code had protection for admin, patient, doctor, etc.
+        
         // Detach all permissions and users before deletion
         $role->permissions()->detach();
         $role->users()->detach();
@@ -132,6 +129,8 @@ class RoleService
     public function assignPermissions(int $roleId, array $permissionIds): Role
     {
         $role = $this->getRoleById($roleId);
+        
+        // ✅ REMOVED: Protection check - allow permission assignment for all roles
         $role->permissions()->sync($permissionIds);
 
         return $role->load('permissions');

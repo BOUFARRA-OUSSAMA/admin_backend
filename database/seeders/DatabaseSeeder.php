@@ -14,13 +14,17 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call([
-            // Base seeders first
+            // ✅ FIXED ORDER: Base seeders first
             RoleSeeder::class,
-            PermissionSeeder::class,
-            AdminUserSeeder::class,
             
-            // Appointment permission setup
+            // ✅ Create all permissions first (including appointment permissions)
+            PermissionSeeder::class,  // This now handles ALL permissions and admin assignment
+            
+            // ✅ This will ensure admin gets any additional permissions
             AppointmentPermissionSeeder::class,
+            
+            // Then create users
+            AdminUserSeeder::class,
             
             // Users and profiles (doctors/patients)
             AppointmentTestUsersSeeder::class,
