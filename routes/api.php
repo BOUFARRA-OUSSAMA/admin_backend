@@ -293,6 +293,11 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('/alerts/critical', [App\Http\Controllers\Api\DoctorPatientController::class, 'getCriticalAlerts']);
         Route::get('/dashboard/stats', [App\Http\Controllers\Api\DoctorPatientController::class, 'getDashboardStats']);
         Route::get('/activity/recent', [App\Http\Controllers\Api\DoctorPatientController::class, 'getRecentActivity']);
+        
+        // ✅ NEW: Phase 2 - Patient Demographics Endpoints
+        Route::get('/demographics/gender', [App\Http\Controllers\Api\DoctorPatientController::class, 'getGenderDemographics']);     // GET /api/doctor/patients/demographics/gender
+        Route::get('/demographics/age', [App\Http\Controllers\Api\DoctorPatientController::class, 'getAgeDemographics']);           // GET /api/doctor/patients/demographics/age
+        Route::get('/demographics/overview', [App\Http\Controllers\Api\DoctorPatientController::class, 'getDemographicsOverview']); // GET /api/doctor/patients/demographics/overview
     });
 });
 
