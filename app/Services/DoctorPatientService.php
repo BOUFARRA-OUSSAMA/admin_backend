@@ -459,4 +459,166 @@ class DoctorPatientService
                          ->limit(3)
                          ->get();
     }
+
+    /**
+     * ✅ NEW: Get gender demographics for doctor's patients
+     */
+    public function getGenderDemographics(int $doctorId): array
+    {
+        // Get patients who have had appointments with this doctor
+        $patientUserIds = Appointment::where('doctor_user_id', $doctorId)
+                                   ->distinct()
+                                   ->pluck('patient_user_id');
+
+        if ($patientUserIds->isEmpty()) {
+            return [
+                'male' => 0,
+                'female' => 0,
+                'other' => 0,
+                'not_specified' => 0,
+                'total_patients' => 0
+            ];
+        }
+
+        // Get gender distribution from personal_infos table (correct table name)
+        $genderCounts = Patient::whereIn('user_id', $patientUserIds)
+            ->join('personal_infos', 'patients.id', '=', 'personal_infos.patient_id')
+            ->selectRaw('COALESCE(LOWER(gender), \'not_specified\') as gender, COUNT(*) as count')
+            ->groupBy('gender')
+            ->pluck('count', 'gender')
+            ->toArray();
+
+        return [
+            'male' => $genderCounts['male'] ?? 0,
+            'female' => $genderCounts['female'] ?? 0,
+            'other' => $genderCounts['other'] ?? 0,
+            'not_specified' => ($genderCounts['not_specified'] ?? 0) + ($genderCounts[''] ?? 0),
+            'total_patients' => array_sum($genderCounts),
+            'percentages' => $this->calculatePercentages($genderCounts)
+        ];
+    }
+
+    /**
+     * ✅ NEW: Get age demographics for doctor's patients
+     */
+    public function getAgeDemographics(int $doctorId): array
+    {
+        // Get patients who have had appointments with this doctor
+        $patientUserIds = Appointment::where('doctor_user_id', $doctorId)
+                                   ->distinct()
+                                   ->pluck('patient_user_id');
+
+        if ($patientUserIds->isEmpty()) {
+            return [
+                'age_groups' => [
+                    '0-17' => 0,
+                    '18-30' => 0,
+                    '31-45' => 0,
+                    '46-60' => 0,
+                    '61-75' => 0,
+                    '76+' => 0
+                ],
+                'total_patients' => 0,
+                'average_age' => 0
+            ];
+        }
+
+        // Get patients with birthdate from personal_infos table (correct table name)
+        $patients = Patient::whereIn('user_id', $patientUserIds)
+            ->join('personal_infos', 'patients.id', '=', 'personal_infos.patient_id')
+            ->whereNotNull('personal_infos.birthdate')
+            ->select('personal_infos.birthdate')
+            ->get();
+
+        $ageGroups = [
+            '0-17' => 0,
+            '18-30' => 0,
+            '31-45' => 0,
+            '46-60' => 0,
+            '61-75' => 0,
+            '76+' => 0
+        ];
+
+        $totalAge = 0;
+        $validPatients = 0;
+
+        foreach ($patients as $patient) {
+            $age = Carbon::parse($patient->birthdate)->age;
+            $totalAge += $age;
+            $validPatients++;
+
+            if ($age <= 17) {
+                $ageGroups['0-17']++;
+            } elseif ($age <= 30) {
+                $ageGroups['18-30']++;
+            } elseif ($age <= 45) {
+                $ageGroups['31-45']++;
+            } elseif ($age <= 60) {
+                $ageGroups['46-60']++;
+            } elseif ($age <= 75) {
+                $ageGroups['61-75']++;
+            } else {
+                $ageGroups['76+']++;
+            }
+        }
+
+        return [
+            'age_groups' => $ageGroups,
+            'total_patients' => $validPatients,
+            'average_age' => $validPatients > 0 ? round($totalAge / $validPatients, 1) : 0,
+            'percentages' => $this->calculatePercentages($ageGroups)
+        ];
+    }
+
+    /**
+     * ✅ NEW: Get complete demographics overview for doctor's patients
+     */
+    public function getDemographicsOverview(int $doctorId): array
+    {
+        $genderData = $this->getGenderDemographics($doctorId);
+        $ageData = $this->getAgeDemographics($doctorId);
+
+        // Get additional overview stats
+        $patientUserIds = Appointment::where('doctor_user_id', $doctorId)
+                                   ->distinct()
+                                   ->pluck('patient_user_id');
+
+        $newPatientsThisMonth = 0;
+        $totalPatients = count($patientUserIds);
+
+        if (!empty($patientUserIds)) {
+            $newPatientsThisMonth = Patient::whereIn('user_id', $patientUserIds)
+                ->where('created_at', '>=', Carbon::now()->startOfMonth())
+                ->count();
+        }
+
+        return [
+            'overview' => [
+                'total_patients' => $totalPatients,
+                'new_this_month' => $newPatientsThisMonth,
+                'growth_rate' => $totalPatients > 0 ? round(($newPatientsThisMonth / $totalPatients) * 100, 1) : 0
+            ],
+            'gender_distribution' => $genderData,
+            'age_distribution' => $ageData,
+            'generated_at' => now()->toISOString()
+        ];
+    }
+
+    /**
+     * Helper method to calculate percentages
+     */
+    private function calculatePercentages(array $data): array
+    {
+        $total = array_sum($data);
+        if ($total === 0) {
+            return array_map(fn() => 0, $data);
+        }
+
+        $percentages = [];
+        foreach ($data as $key => $value) {
+            $percentages[$key] = round(($value / $total) * 100, 1);
+        }
+
+        return $percentages;
+    }
 }

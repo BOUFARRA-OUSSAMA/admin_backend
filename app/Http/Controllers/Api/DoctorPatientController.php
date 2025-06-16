@@ -171,4 +171,76 @@ class DoctorPatientController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * ✅ NEW: Get gender demographics for doctor's patients
+     */
+    public function getGenderDemographics(Request $request): JsonResponse
+    {
+        try {
+            $doctorId = auth()->id();
+            
+            $demographics = $this->doctorPatientService->getGenderDemographics($doctorId);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $demographics,
+                'message' => 'Gender demographics retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve gender demographics',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ NEW: Get age demographics for doctor's patients
+     */
+    public function getAgeDemographics(Request $request): JsonResponse
+    {
+        try {
+            $doctorId = auth()->id();
+            
+            $demographics = $this->doctorPatientService->getAgeDemographics($doctorId);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $demographics,
+                'message' => 'Age demographics retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve age demographics',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ✅ NEW: Get complete demographics overview for doctor's patients
+     */
+    public function getDemographicsOverview(Request $request): JsonResponse
+    {
+        try {
+            $doctorId = auth()->id();
+            
+            $overview = $this->doctorPatientService->getDemographicsOverview($doctorId);
+            
+            return response()->json([
+                'success' => true,
+                'data' => $overview,
+                'message' => 'Demographics overview retrieved successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve demographics overview',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
