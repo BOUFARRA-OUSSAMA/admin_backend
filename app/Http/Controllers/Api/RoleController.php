@@ -105,18 +105,12 @@ class RoleController extends Controller
      */
     public function update(UpdateRoleRequest $request, Role $role)
     {
-        // Check if it's a protected role before allowing name/code changes
-        $protectedRoles = ['admin', 'patient', 'doctor', 'receptionist', 'nurse'];
-        
-        if (in_array($role->code, $protectedRoles) && 
-            (isset($request->name) || isset($request->code))) {
-            return $this->error('Cannot modify name or code of system roles.', 403);
-        }
+        // ✅ REMOVED: Protection check for system roles
+        // Previous code prevented name/code changes for admin, patient, doctor, etc.
         
         // Get the validated data
         $validatedData = $request->validated();
         
-        // Ensure permissions are included in the validated data
         $updatedRole = $this->roleService->updateRole($role->id, $validatedData);
 
         if (isset($validatedData['permissions'])) {
@@ -152,10 +146,14 @@ class RoleController extends Controller
      */
     public function destroy(Role $role, Request $request)
     {
+        // ✅ REMOVED: Check for protected roles
+        // Now directly calls deleteRole without protection
+        
         $result = $this->roleService->deleteRole($role->id);
 
+        // ✅ MODIFIED: Error handling for consistency
         if (!$result) {
-            return $this->error('Cannot delete system role.', 403);
+            return $this->error('Failed to delete role.', 500);
         }
 
         // Log the activity
@@ -182,6 +180,7 @@ class RoleController extends Controller
      */
     public function assignPermissions(AssignPermissionsRequest $request, Role $role)
     {
+        // ✅ REMOVED: Protection check - allow permission assignment for all roles
         $updatedRole = $this->roleService->assignPermissions($role->id, $request->validated()['permissions']);
 
         // Log the activity
