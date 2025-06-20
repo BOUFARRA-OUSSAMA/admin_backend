@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\PersonalInfoController;
 use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\AppointmentReminderController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\MedicalHistoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -236,6 +237,15 @@ Route::group(['middleware' => ['jwt.auth']], function () {
             Route::get('/statistics', [App\Http\Controllers\Api\PatientMedicalController::class, 'statistics']);
         });
 
+        // Medical History Management
+        Route::prefix('patients/{patient}/medical-histories')->group(function () {
+            Route::get('/', [MedicalHistoryController::class, 'index']);
+            Route::post('/', [MedicalHistoryController::class, 'store']);
+            Route::get('/{id}', [MedicalHistoryController::class, 'show']);
+            Route::put('/{id}', [MedicalHistoryController::class, 'update']);
+            Route::delete('/{id}', [MedicalHistoryController::class, 'destroy']);
+        });
+        
         // Patient Medical Data - Legacy endpoint for backwards compatibility
         Route::get('patients/{patient}/medical-data', [PatientController::class, 'getMedicalData']);
 
