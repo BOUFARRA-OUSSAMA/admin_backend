@@ -16,8 +16,8 @@ class MedicalHistory extends Model
         'chronic_diseases',
         'current_medications',
         'allergies',
-        'last_updated',
         'updated_by_user_id',
+        'last_updated'
     ];
 
     protected $casts = [
@@ -26,7 +26,7 @@ class MedicalHistory extends Model
         'chronic_diseases' => 'array',
         'current_medications' => 'array',
         'allergies' => 'array',
-        'last_updated' => 'datetime',
+        'last_updated' => 'datetime'
     ];
 
     /**
@@ -52,13 +52,14 @@ class MedicalHistory extends Model
     {
         return [
             'id' => $this->id,
-            'conditions' => $this->current_medical_conditions ?? [],
-            'surgeries' => $this->past_surgeries ?? [],
-            'chronicDiseases' => $this->chronic_diseases ?? [],
-            'medications' => $this->current_medications ?? [],
-            'allergies' => $this->allergies ?? [],
+            'patient_id' => $this->patient_id,
+            'conditions' => is_array($this->current_medical_conditions) ? $this->current_medical_conditions : [],
+            'surgeries' => is_array($this->past_surgeries) ? $this->past_surgeries : [],
+            'chronicDiseases' => is_array($this->chronic_diseases) ? $this->chronic_diseases : [],
+            'medications' => is_array($this->current_medications) ? $this->current_medications : [],
+            'allergies' => is_array($this->allergies) ? $this->allergies : [],
             'lastUpdated' => $this->last_updated?->toISOString(),
-            'updatedBy' => $this->updatedBy?->name,
+            'updatedBy' => $this->updatedBy?->name ?? 'Unknown'
         ];
     }
 

@@ -26,31 +26,31 @@ class MedicalHistoryController extends Controller
     /**
      * Display a listing of medical histories for a patient.
      */
-public function index(Request $request, string $patient): JsonResponse
-{
-    try {
-        $patientId = $patient; // Get from route parameter instead of query
-        
-        $user = Auth::user();
-        $patient = Patient::findOrFail($patientId);
+    public function index(Request $request, string $patient): JsonResponse
+    {
+        try {
+            $patientId = $patient; // Get from route parameter instead of query
+            
+            $user = Auth::user();
+            $patient = Patient::findOrFail($patientId);
 
-        // Check permissions
-        if (!$user->isPatient() && !$user->hasPermission('patients:view-medical')) {
-            return $this->error('Insufficient permissions', 403);
+            // Check permissions
+            if (!$user->isPatient() && !$user->hasPermission('patients:view-medical')) {
+                return $this->error('Insufficient permissions', 403);
+            }
+
+            if ($user->isPatient() && $user->patient->id !== $patient->id) {
+                return $this->error('Access denied', 403);
+            }
+
+            $medicalHistories = $this->medicalHistoryService->getPatientMedicalHistories($patientId);
+
+            return $this->success($medicalHistories, 'Medical histories retrieved successfully');
+
+        } catch (\Exception $e) {
+            return $this->error('Failed to retrieve medical histories: ' . $e->getMessage(), 500);
         }
-
-        if ($user->isPatient() && $user->patient->id !== $patient->id) {
-            return $this->error('Access denied', 403);
-        }
-
-        $medicalHistories = $this->medicalHistoryService->getPatientMedicalHistories($patientId);
-
-        return $this->success($medicalHistories, 'Medical histories retrieved successfully');
-
-    } catch (\Exception $e) {
-        return $this->error('Failed to retrieve medical histories: ' . $e->getMessage(), 500);
     }
-}
 
     /**
      * Store a newly created medical history.
@@ -142,27 +142,60 @@ public function index(Request $request, string $patient): JsonResponse
         }
     }
 
-/**
- * Remove the specified medical history.
- */
-public function destroy(string $id): JsonResponse
-{
-    try {
-        $user = Auth::user();
-        $medicalHistory = MedicalHistory::findOrFail($id);
-
-        // Check permissions - only medical staff with delete permission
-        // if (!$user->hasPermission('patients:delete-medical')) {
-        //     return $this->error('Insufficient permissions to delete medical history', 403);
-        // }
-
-        // Pass the user ID to the delete method
-        $this->medicalHistoryService->deleteMedicalHistory($id, $user->id);
-
-        return $this->success(null, 'Medical history deleted successfully');
-
-    } catch (\Exception $e) {
-        return $this->error('Failed to delete medical history: ' . $e->getMessage(), 500);
+    /**
+     * Delete medical history
+     */
+    public function destroy(Request $request, int $patientId, int $historyId): JsonResponse
+    {
+        try {
+            // Validate that the patient exists
+            $patient = Patient::findOrFail($patientId);
+            
+            // Validate that the medical history exists and belongs to the patient
+            $medicalHistory = MedicalHistory::where('id', $historyId)
+                ->where('patient_id', $patientId)
+                ->firstOrFail();
+            
+            // Get the current user ID
+            $userId = $request->user()->id ?? 1; // Fallback to user ID 1 if not available
+            
+            // Delete the medical history
+            $result = $this->medicalHistoryService->deleteMedicalHistory($historyId, $userId);
+            
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Medical history deleted successfully',
+                    'data' => null
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to delete medical history',
+                    'data' => null
+                ], 500);
+            }
+            
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Medical history record not found',
+                'data' => null
+            ], 404);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in MedicalHistoryController@destroy', [
+                'error' => $e->getMessage(),
+                'patient_id' => $patientId,
+                'history_id' => $historyId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Internal server error occurred',
+                'data' => null
+            ], 500);
+        }
     }
-}
 }
