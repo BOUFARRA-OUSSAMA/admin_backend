@@ -39,6 +39,10 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::post('refresh', [AuthController::class, 'refresh']);
         Route::get('me', [AuthController::class, 'me']);
+
+     // la nouvelle route ici, juste après 'me'
+        Route::post('change-password', [AuthController::class, 'changePassword']);
+
     });
 
     // User routes

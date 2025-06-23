@@ -1,5 +1,6 @@
 <?php
 
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -15,6 +16,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
@@ -296,6 +298,58 @@ class AuthController extends Controller
                 'error' => $e->getMessage()
             ], 401);
         }
+    }
+
+    /**
+     * Change user password
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = JWTAuth::parseToken()->authenticate();
+
+        // Vérifier le mot de passe actuel
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le mot de passe actuel est incorrect.'
+            ], 400);
+        }
+
+        // Mettre à jour le mot de passe
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Log password change activity
+        $this->authService->logActivity(
+            $user->id,
+            'password_change',
+            'Authentication',
+            'User changed password',
+            null,
+            null,
+            $request->ip()
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mot de passe modifié avec succès.'
+        ]);
     }
 
     /**
