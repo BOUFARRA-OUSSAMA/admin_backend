@@ -6,6 +6,7 @@ use App\Models\PatientFile;
 use App\Models\User;
 use App\Notifications\PatientFileUploadedNotification;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
 
 class PatientFileNotificationService
 {
@@ -30,7 +31,7 @@ class PatientFileNotificationService
             
         } catch (\Exception $e) {
             // Log error but don't break the upload process
-            \Log::error('Failed to send file upload notifications: ' . $e->getMessage());
+            Log::error('Failed to send file upload notifications: ' . $e->getMessage());
         }
     }    /**
      * Create in-app notification for file upload.
@@ -66,7 +67,7 @@ class PatientFileNotificationService
             $patientUser->notify(new \App\Notifications\PatientFileReviewedNotification($file, $doctor, $review));
             
         } catch (\Exception $e) {
-            \Log::error('Failed to send file review notification: ' . $e->getMessage());
+            Log::error('Failed to send file review notification: ' . $e->getMessage());
         }
     }
 }

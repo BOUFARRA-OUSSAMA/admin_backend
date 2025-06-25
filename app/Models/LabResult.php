@@ -4,6 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\MedicalRecord;
+use App\Models\Patient;
+use App\Models\LabTest;
+use App\Models\User;
+ 
 
 class LabResult extends Model
 {
@@ -73,8 +78,14 @@ class LabResult extends Model
      */
     public function toFrontendFormat(): array
     {
-        $structuredResults = $this->structured_results ?? [];
-        
+              // Correction : forcer le décodage si la valeur est une chaîne
+        $structuredResults = $this->structured_results;
+        if (is_string($structuredResults)) {
+            $decoded = json_decode($structuredResults, true);
+            $structuredResults = is_array($decoded) ? $decoded : [];
+        } elseif (!is_array($structuredResults)) {
+            $structuredResults = [];
+        }
         return [
             'id' => $this->id,
             'testName' => $this->labTest?->test_name ?? 'Unknown Test',

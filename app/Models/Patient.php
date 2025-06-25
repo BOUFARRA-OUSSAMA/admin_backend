@@ -226,26 +226,26 @@ class Patient extends Model
         $this->load([
             'personalInfo',
             'vitalSigns' => function($query) {
-                $query->latest()->limit(5);
+                $query->latest()->limit(1);
             },
             'medications' => function($query) {
                 $query->where('status', 'active')->latest();
             },
             'medicalHistories',
             'labResults' => function($query) {
-                $query->latest()->limit(10);
+                $query->latest()->limit(2);
             },
             'patientNotes' => function($query) {
-                $query->where('is_private', false)->latest()->limit(5);
+                $query->where('is_private', false)->latest()->limit(2);
             },
             'patientAlerts' => function($query) {
                 $query->where('is_active', true)->orderBy('severity', 'desc');
             },
             'timelineEvents' => function($query) {
-                $query->where('is_visible_to_patient', true)->latest()->limit(10);
+                $query->where('is_visible_to_patient', true)->latest()->limit(3);
             },
             'patientFiles' => function($query) {
-                $query->latest()->limit(10);
+                $query->latest()->limit(2);
             }
         ]);
 
@@ -339,7 +339,7 @@ class Patient extends Model
     /**
      * Calculate patient statistics
      */
-    private function calculatePatientStats(): array
+    public function calculatePatientStats(): array
     {
         return [
             'total_appointments' => $this->appointments()->count(),
