@@ -9,6 +9,7 @@ use App\Models\PatientNote;
 use App\Models\PatientAlert;
 use App\Models\LabResult;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Log;
 
 class PatientMedicalDataService
 {
@@ -17,16 +18,46 @@ class PatientMedicalDataService
      */
     public function getPatientMedicalData(Patient $patient, bool $isPatientView = false): array
     {
-        return [
-            'patient_info' => $this->getBasicPatientInfo($patient),
-            'vital_signs' => $this->getVitalSigns($patient),
-            'medications' => $this->getMedications($patient),
-            'medical_history' => $this->getMedicalHistory($patient),
-            'lab_results' => $this->getLabResults($patient),
-            'notes' => $this->getPatientNotes($patient, ['is_private' => !$isPatientView]),
-            'alerts' => $this->getActiveAlerts($patient),
-            'statistics' => $this->getPatientStatistics($patient),
-        ];
+         try {
+             Log::info("Début de getPatientMedicalData pour le patient ID: {$patient->id}");
+               $data = [];
+               Log::info("Étape 1/8: getBasicPatientInfo");
+            $data['patient_info'] = $this->getBasicPatientInfo($patient);
+
+            Log::info("Étape 2/8: getPatientVitalSigns");
+            $data['vital_signs'] = $this->getPatientVitalSigns($patient->id, ['limit' => 5]);
+
+            Log::info("Étape 3/8: getPatientMedications");
+            $data['medications'] = $this->getPatientMedications($patient->id, ['status' => 'active', 'limit' => 5]);
+
+            Log::info("Étape 4/8: getPatientMedicalHistory");
+            $data['medical_history'] = $this->getPatientMedicalHistory($patient->id, ['limit' => 1]);
+
+            Log::info("Étape 5/8: getPatientLabResults");
+            $data['lab_results'] = $this->getPatientLabResults($patient->id, ['limit' => 5]);
+
+            Log::info("Étape 6/8: getPatientNotes");
+            $data['notes'] = $this->getPatientNotes($patient, ['limit' => 5]);
+
+            Log::info("Étape 7/8: getPatientAlerts");
+            $data['alerts'] = $this->getPatientAlerts($patient->id, ['status' => 'active', 'limit' => 5]);
+
+            Log::info("Étape 8/8: getPatientStatistics");
+            $data['statistics'] = $this->getPatientStatistics($patient);
+
+
+        
+         Log::info("Fin de getPatientMedicalData avec succès pour le patient ID: {$patient->id}");
+            return $data;
+
+        } catch (\Throwable $e) {
+            Log::error("ERREUR FATALE dans getPatientMedicalData pour le patient ID: {$patient->id}", [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;
+        }
     }
 
     /**
@@ -93,7 +124,9 @@ class PatientMedicalDataService
     {
         $patient = Patient::findOrFail($patientId);
         
-        $query = $patient->medications()->latest();
+        $query = $patient->medications()
+                        ->with('doctor:id,name')
+                        ->latest();
         
         // Apply status filter
         if (!empty($filters['status'])) {
@@ -138,7 +171,7 @@ class PatientMedicalDataService
     {
         $patient = Patient::findOrFail($patientId);
         
-        $query = $patient->medicalHistories()->latest();
+        $query = $patient->medicalHistories()->latest('last_updated');
         
         // Apply limit
         if (!empty($filters['limit'])) {
@@ -159,11 +192,40 @@ class PatientMedicalDataService
     /**
      * Get patient lab results with filters.
      */
-    public function getPatientLabResults(int $patientId, array $filters = []): Collection
-    {
-        $patient = Patient::findOrFail($patientId);
+    // public function getPatientLabResults(int $patientId, array $filters = []): Collection
+    // {
+    //     $patient = Patient::findOrFail($patientId);
         
-        $query = $patient->labResults()->latest('result_date');
+    //     $query = $patient->labResults()->latest('result_date');
+        
+    //     // Apply date filters
+    //     if (!empty($filters['date_from'])) {
+    //         $query->whereDate('result_date', '>=', $filters['date_from']);
+    //     }
+        
+    //     if (!empty($filters['date_to'])) {
+    //         $query->whereDate('result_date', '<=', $filters['date_to']);
+    //     }
+        
+    //     // Apply limit
+    //     if (!empty($filters['limit'])) {
+    //         $query->limit($filters['limit']);
+    //     }
+        
+    //     return $query->get();
+    // }
+
+    public function getPatientLabResults(int $patientId, array $filters = []): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        // ✅ MODIFICATION DE LA REQUÊTE
+        $query = LabResult::query()
+            ->where('patient_id', $patientId)
+            // Charger la relation 'reviewedBy' et ne sélectionner que l'ID et le nom pour la performance.
+            ->with([
+                'reviewedBy:id,name', // Charge le nom du médecin
+                'reviewedBy.doctor:user_id,specialty' // Charge la spécialité du médecin
+            ]) 
+            ->latest('result_date');
         
         // Apply date filters
         if (!empty($filters['date_from'])) {
@@ -174,13 +236,12 @@ class PatientMedicalDataService
             $query->whereDate('result_date', '<=', $filters['date_to']);
         }
         
-        // Apply limit
-        if (!empty($filters['limit'])) {
-            $query->limit($filters['limit']);
-        }
-        
-        return $query->get();
+        // La méthode get() est remplacée par paginate() pour gérer le 'limit'
+        return $query->paginate($filters['limit'] ?? 20);
     }
+
+
+
 
     /**
      * Get patient lab results.
@@ -268,20 +329,11 @@ class PatientMedicalDataService
             $patient = Patient::findOrFail($patient);
         }
         
-        $query = $patient->patientNotes()->latest();
+        $query = $patient->patientNotes()
+                        ->with('doctor:id,name') 
+                        ->latest();
         
-        // Legacy support: if filters is boolean, it's isPatientView
-        if (is_bool($filters)) {
-            if ($filters) {
-                $query->where('is_private', false);
-            }
-            return $query->get();
-        }
-        
-        // Apply privacy filter
-        if (isset($filters['is_private'])) {
-            $query->where('is_private', $filters['is_private']);
-        }
+
         
         // Apply note type filter
         if (!empty($filters['note_type'])) {
@@ -393,4 +445,50 @@ class PatientMedicalDataService
         
         return PatientAlert::create($data);
     }
+
+     /**
+     * ✅ CORRIGÉ : Calcule les statistiques sur TOUS les historiques médicaux,
+     * en comptant uniquement les éléments uniques pour chaque catégorie.
+     */
+    public function getPatientSummaryStatistics(Patient $patient): array
+    {
+        try {
+            // 1. Récupérer TOUS les historiques médicaux du patient.
+            $histories = $patient->medicalHistories;
+
+            // 2. Créer une fonction d'aide pour extraire, aplatir et compter les éléments uniques.
+            //    Cela évite la répétition de code.
+            $getUniqueCount = function (string $field) use ($histories) {
+                return $histories
+                    // a. Extraire la colonne (qui contient des chaînes JSON).
+                    ->pluck($field)
+                    // b. Décoder chaque chaîne JSON en un tableau PHP.
+
+                  ->map(fn($json) => is_array($json) ? $json : json_decode($json, true) ?? [])
+                    // c. Aplatir la collection de tableaux en une seule liste.
+                    ->flatten()
+                    // d. Supprimer tous les doublons de la liste.
+                    ->unique()
+                    // e. Compter le nombre d'éléments uniques restants.
+                    ->count();
+            };
+             // 3. Appliquer la fonction à chaque champ pour obtenir les statistiques.
+            return [
+                'conditions' => $getUniqueCount('current_medical_conditions'),
+                'chronic' => $getUniqueCount('chronic_diseases'),
+                'surgeries' => $getUniqueCount('past_surgeries'),
+                'allergies' => $getUniqueCount('allergies'),
+                'active_medications' => $getUniqueCount('current_medications'),
+            ];
+
+        } catch (\Throwable $e) {
+            Log::error("Erreur dans getPatientSummaryStatistics pour le patient ID: " . $patient->id, [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            throw $e;   
+            }
+        }
 }
+

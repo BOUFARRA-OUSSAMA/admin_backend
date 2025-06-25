@@ -222,6 +222,24 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     // MEDICAL RECORDS API ROUTES
     Route::group(['middleware' => ['jwt.auth']], function () {
         
+
+        // ✅ NEW: Routes for the logged-in patient (no patientId in URL)
+        Route::prefix('patient/medical')->group(function () {
+            Route::get('/summary', [App\Http\Controllers\Api\PatientMedicalController::class, 'summary']);
+            Route::get('/vitals', [App\Http\Controllers\Api\PatientMedicalController::class, 'vitals']);
+            Route::get('/medications', [App\Http\Controllers\Api\PatientMedicalController::class, 'medications']);
+            Route::get('/lab-results', [App\Http\Controllers\Api\PatientMedicalController::class, 'labResults']);
+            Route::get('/medical-history', [App\Http\Controllers\Api\PatientMedicalController::class, 'medicalHistory']);
+            Route::get('/timeline', [App\Http\Controllers\Api\PatientMedicalController::class, 'timeline']);
+            Route::get('/files', [App\Http\Controllers\Api\PatientMedicalController::class, 'files']);
+            Route::get('/notes', [App\Http\Controllers\Api\PatientMedicalController::class, 'notes']);
+            Route::get('/alerts', [App\Http\Controllers\Api\PatientMedicalController::class, 'alerts']);
+            Route::get('/statistics', [App\Http\Controllers\Api\PatientMedicalController::class, 'statistics']);
+       
+        Route::get('/summary-statistics', [App\Http\Controllers\Api\PatientMedicalController::class, 'summaryStatistics']);
+        });
+
+
         // Patient Medical Data - Comprehensive endpoints
         Route::prefix('patients/{patient}/medical')->group(function () {
             Route::get('/summary', [App\Http\Controllers\Api\PatientMedicalController::class, 'summary']);
@@ -235,6 +253,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
             Route::get('/alerts', [App\Http\Controllers\Api\PatientMedicalController::class, 'alerts']);
             Route::get('/statistics', [App\Http\Controllers\Api\PatientMedicalController::class, 'statistics']);
         });
+
+
 
         // Patient Medical Data - Legacy endpoint for backwards compatibility
         Route::get('patients/{patient}/medical-data', [PatientController::class, 'getMedicalData']);
@@ -250,10 +270,13 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::apiResource('lab-results', App\Http\Controllers\Api\LabResultController::class);
         Route::get('patients/{patient}/lab-results/{testName}/history', [App\Http\Controllers\Api\LabResultController::class, 'history']);
 
+              
         // Patient Files Management
+         Route::get('patient-files/categories', [App\Http\Controllers\Api\PatientFileController::class, 'categories']);
+          Route::get('patient-files/{file}/download', [App\Http\Controllers\Api\PatientFileController::class, 'download'])->name('patient-files.download');
         Route::apiResource('patient-files', App\Http\Controllers\Api\PatientFileController::class);
-        Route::get('patient-files/{file}/download', [App\Http\Controllers\Api\PatientFileController::class, 'download'])->name('patient-files.download');
-        Route::get('patient-files-categories', [App\Http\Controllers\Api\PatientFileController::class, 'categories']);
+      
+
 
         // Patient Notes Management
         Route::apiResource('patient-notes', App\Http\Controllers\Api\PatientNoteController::class);
@@ -371,3 +394,7 @@ Route::fallback(function () {
         'errors' => ['endpoint' => 'The requested endpoint does not exist']
     ], 404);
 });
+
+
+
+ 
