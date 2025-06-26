@@ -266,7 +266,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
             Route::get('/{id}', [MedicalHistoryController::class, 'show']);
             Route::put('/{id}', [MedicalHistoryController::class, 'update']);
             Route::delete('/{id}', [MedicalHistoryController::class, 'destroy']);
-
+   }); 
         // Patient Medical Data - Legacy endpoint for backwards compatibility
         Route::get('patients/{patient}/medical-data', [PatientController::class, 'getMedicalData']);
 
