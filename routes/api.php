@@ -46,8 +46,16 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     });
 
     // User routes
-    Route::get('users/counts-by-status', [UserController::class, 'countsByStatus']);
-    Route::apiResource('users', UserController::class);
+    // Applying explicit permission middleware for each action as per seeded permissions.
+    Route::get('users/counts-by-status', [UserController::class, 'countsByStatus'])
+        ->middleware('permission:users:view');
+    Route::apiResource('users', UserController::class)->middleware([
+        'index'   => 'permission:users:view',
+        'show'    => 'permission:users:view',
+        'store'   => 'permission:users:create',
+        'update'  => 'permission:users:edit',
+        'destroy' => 'permission:users:delete',
+    ]);
     Route::post('users/{user}/roles', [UserController::class, 'assignRoles']);
     Route::get('users/{user}/roles', [UserController::class, 'getUserRoles']);
     Route::get('users/{user}/permissions', [UserController::class, 'getUserPermissions']);
@@ -57,22 +65,33 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     // Role routes
     Route::get('roles/check-name', [RoleController::class, 'checkNameExists']);
     Route::apiResource('roles', RoleController::class)->middleware([
-        'index' => 'permission:roles:view',
-        'show' => 'permission:roles:view',
-        'store' => 'permission:roles:create',
-        'update' => 'permission:roles:edit',
+        'index'   => 'permission:roles:view',
+        'show'    => 'permission:roles:view',
+        'store'   => 'permission:roles:create',
+        'update'  => 'permission:roles:edit',
         'destroy' => 'permission:roles:delete',
     ]);
     Route::post('roles/{role}/permissions', [RoleController::class, 'assignPermissions'])
         ->middleware('permission:roles:assign-permissions');
 
     // Permission routes
-    Route::get('permissions', [PermissionController::class, 'index']);
-    Route::get('permissions/groups', [PermissionController::class, 'getGroups']);
-    Route::get('permissions/groups/list', [PermissionController::class, 'listGroups']);
+    // Adding permission middleware to view permissions and groups.
+    Route::get('permissions', [PermissionController::class, 'index'])
+        ->middleware('permission:permissions:view');
+    Route::get('permissions/groups', [PermissionController::class, 'getGroups'])
+        ->middleware('permission:permissions:view-groups');
+    Route::get('permissions/groups/list', [PermissionController::class, 'listGroups'])
+        ->middleware('permission:permissions:view-groups');
 
     // Patient routes
-    Route::apiResource('patients', PatientController::class);
+    // Applying explicit permission middleware for patient resource.
+    Route::apiResource('patients', PatientController::class)->middleware([
+        'index'   => 'permission:patients:view',
+        'show'    => 'permission:patients:view',
+        'store'   => 'permission:patients:create',
+        'update'  => 'permission:patients:edit',
+        'destroy' => 'permission:patients:delete',
+    ]);
 
     // Activity Log routes
     Route::get('activity-logs', [ActivityLogController::class, 'index']);
