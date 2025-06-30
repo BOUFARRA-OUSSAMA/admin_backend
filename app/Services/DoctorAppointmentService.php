@@ -192,6 +192,24 @@ class DoctorAppointmentService
     }
 
     /**
+     * Cancel appointment with doctor override (emergency cancellation)
+     */
+    public function emergencyCancelAppointment(User $doctor, Appointment $appointment, string $reason): bool
+    {
+        if (!$doctor->isDoctor()) {
+            throw new Exception('User is not a doctor');
+        }
+
+        // Verify appointment belongs to doctor
+        if ($appointment->doctor_user_id !== $doctor->id) {
+            throw new Exception('You can only cancel your own appointments');
+        }
+
+        // Force cancellation regardless of time restrictions
+        return $this->appointmentService->forceCancelAppointment($appointment, $reason, $doctor);
+    }
+
+    /**
      * Create time slots for doctor
      */
     public function createTimeSlots(User $doctor, array $scheduleData): array

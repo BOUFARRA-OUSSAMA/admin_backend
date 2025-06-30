@@ -306,24 +306,26 @@ class PatientAppointmentController extends Controller
     /**
      * Get available doctors
      */
-    public function availableDoctors(): JsonResponse
-    {
-        try {
-            $doctors = $this->patientAppointmentService->getAvailableDoctors();
+public function availableDoctors(Request $request): JsonResponse
+{
+    try {
+        $specialty = $request->query('specialty');
+        $location = $request->query('location');
+        $doctors = $this->patientAppointmentService->getAvailableDoctors($specialty, $location);
 
-            return response()->json([
-                'success' => true,
-                'data' => $doctors
-            ]);
+        return response()->json([
+            'success' => true,
+            'data' => $doctors
+        ]);
 
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve available doctors',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve available doctors',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Get available time slots for a doctor

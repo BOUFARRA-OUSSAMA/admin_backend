@@ -28,6 +28,16 @@ return [
             'description' => 'Detects pneumonia in chest X-rays',
             'image_type' => 'radiological',
         ],
+        'breast' => [
+            'name' => 'Breast Cancer Detector',
+            'description' => 'Detects benign and malignant breast lesions in ultrasound images',
+            'image_type' => 'ultrasound',
+        ],
+        'tuberculose' => [
+            'name' => 'Tuberculosis Detector',
+            'description' => 'Detects tuberculosis, pneumonia, and normal cases in chest X-rays',
+            'image_type' => 'radiological',
+        ],
     ],
     
     // LLM integration settings

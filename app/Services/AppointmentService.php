@@ -218,6 +218,17 @@ class AppointmentService
         
         try {
             if (!$appointment->canBeCancelled()) {
+                $status = $appointment->status;
+                $timeUntilAppointment = $appointment->appointment_datetime_start->diffInHours(now());
+                
+                if (!in_array($status, ['scheduled', 'confirmed'])) {
+                    throw new Exception("Appointment cannot be cancelled because its status is '{$status}'");
+                }
+                
+                if ($timeUntilAppointment <= 2) {
+                    throw new Exception("Appointment cannot be cancelled less than 2 hours before the scheduled time. Time remaining: {$timeUntilAppointment} hours");
+                }
+                
                 throw new Exception('This appointment cannot be cancelled');
             }
 
@@ -244,6 +255,52 @@ class AppointmentService
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Failed to cancel appointment: ' . $e->getMessage(), [
+                'appointment_id' => $appointment->id,
+                'reason' => $reason,
+                'cancelled_by' => $cancelledBy->id,
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Force cancel appointment (bypass time restrictions) - for emergency use
+     */
+    public function forceCancelAppointment(Appointment $appointment, string $reason, User $cancelledBy): bool
+    {
+        DB::beginTransaction();
+        
+        try {
+            // Check only status, ignore time restrictions
+            if (!in_array($appointment->status, ['scheduled', 'confirmed'])) {
+                throw new Exception("Appointment cannot be cancelled because its status is '{$appointment->status}'");
+            }
+
+            $success = $appointment->cancel($reason, $cancelledBy);
+            
+            if ($success) {
+                // Log the emergency cancellation
+                activity()
+                    ->causedBy($cancelledBy)
+                    ->performedOn($appointment)
+                    ->withProperties([
+                        'cancellation_reason' => $reason,
+                        'cancelled_by_role' => $cancelledBy->roles->first()?->code ?? 'unknown',
+                        'emergency_cancellation' => true,
+                        'time_until_appointment' => $appointment->appointment_datetime_start->diffInHours(now())
+                    ])
+                    ->log('appointment_emergency_cancelled');
+
+                DB::commit();
+                return true;
+            }
+            
+            DB::rollBack();
+            return false;
+            
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to emergency cancel appointment: ' . $e->getMessage(), [
                 'appointment_id' => $appointment->id,
                 'reason' => $reason,
                 'cancelled_by' => $cancelledBy->id,
