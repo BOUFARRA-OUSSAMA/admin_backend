@@ -32,6 +32,12 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('register', [AuthController::class, 'register']);
 });
 
+// Public appointment availability endpoints (for bot/guests)
+Route::prefix('patient/appointments')->group(function () {
+    Route::get('/doctors/available', [PatientAppointmentController::class, 'availableDoctors']);
+    Route::get('/slots/available', [PatientAppointmentController::class, 'availableSlots']);
+});
+
 // Protected routes
 Route::group(['middleware' => ['jwt.auth']], function () {
     // Auth routes
@@ -185,45 +191,51 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::post('/{id}/cancel', [PatientAppointmentController::class, 'cancel']);       // POST /api/patient/appointments/{id}/cancel
         Route::post('/{id}/reschedule', [PatientAppointmentController::class, 'reschedule']); // POST /api/patient/appointments/{id}/reschedule
         
-        // Available resources for booking
-        Route::get('/doctors/available', [PatientAppointmentController::class, 'availableDoctors']); // GET /api/patient/appointments/doctors/available
-        Route::get('/slots/available', [PatientAppointmentController::class, 'availableSlots']);     // GET /api/patient/appointments/slots/available
+        // // Available resources for booking
+        // Route::get('/doctors/available', [PatientAppointmentController::class, 'availableDoctors']); // GET /api/patient/appointments/doctors/available
+        // Route::get('/slots/available', [PatientAppointmentController::class, 'availableSlots']);     // GET /api/patient/appointments/slots/available
     });
-
+    
     // DOCTOR APPOINTMENT ROUTES - No middleware (service handles validation)
     Route::prefix('doctor/appointments')->group(function () {
         Route::get('/', [DoctorAppointmentController::class, 'index']);             // GET /api/doctor/appointments
         
-        // Create appointments
-        Route::post('/', [DoctorAppointmentController::class, 'store']);
-        Route::post('/recurring', [DoctorAppointmentController::class, 'createRecurring']);
-
-        // Helper endpoints
-        Route::get('/patients/search', [DoctorAppointmentController::class, 'getAvailablePatients']);
-        Route::post('/check-conflicts', [DoctorAppointmentController::class, 'checkConflicts']);
-
-        // Schedule management
+        // Schedule management (MUST come before /{id} routes)
         Route::get('/schedule/today', [DoctorAppointmentController::class, 'todaysSchedule']); // GET /api/doctor/appointments/schedule/today
         Route::get('/upcoming', [DoctorAppointmentController::class, 'upcoming']);             // GET /api/doctor/appointments/upcoming
         Route::get('/schedule/date', [DoctorAppointmentController::class, 'scheduleForDate']); // GET /api/doctor/appointments/schedule/date
         Route::get('/availability', [DoctorAppointmentController::class, 'availability']);     // GET /api/doctor/appointments/availability
         Route::get('/stats', [DoctorAppointmentController::class, 'stats']);                   // GET /api/doctor/appointments/stats
         
-        // Appointment actions
-        Route::post('/{id}/confirm', [DoctorAppointmentController::class, 'confirm']);     // POST /api/doctor/appointments/{id}/confirm
-        Route::post('/{id}/complete', [DoctorAppointmentController::class, 'complete']);   // POST /api/doctor/appointments/{id}/complete
-        Route::post('/{id}/cancel', [DoctorAppointmentController::class, 'cancel']);       // POST /api/doctor/appointments/{id}/cancel
-        Route::post('/{id}/no-show', [DoctorAppointmentController::class, 'markNoShow']); // POST /api/doctor/appointments/{id}/no-show
-        Route::post('/{id}/reschedule', [DoctorAppointmentController::class, 'reschedule']); // ✅ ADD THIS
-    
-        // Time slot management      // POST /api/doctor/appointments/time-slots
+        // Helper endpoints (MUST come before /{id} routes)
+        Route::get('/patients/search', [DoctorAppointmentController::class, 'getAvailablePatients']);
+        Route::post('/check-conflicts', [DoctorAppointmentController::class, 'checkConflicts']);
+        
+        // Time slot management (MUST come before /{id} routes)
         Route::post('/time-slots/block', [DoctorAppointmentController::class, 'blockTimeSlots']); // POST /api/doctor/appointments/time-slots/block
         Route::get('/time-slots/blocked', [DoctorAppointmentController::class, 'blockedSlots']);  // GET /api/doctor/appointments/time-slots/blocked
         Route::delete('/time-slots/blocked/{id}', [DoctorAppointmentController::class, 'unblockTimeSlot']); // DELETE /api/doctor/appointments/time-slots/blocked/{id}
 
-        //  Doctor settings endpoints
+        // Doctor settings endpoints (MUST come before /{id} routes)
         Route::get('/settings', [DoctorAppointmentController::class, 'getSettings']);     // GET /api/doctor/appointments/settings
         Route::put('/settings', [DoctorAppointmentController::class, 'updateSettings']);  // PUT /api/doctor/appointments/settings
+        
+        // Create appointments
+        Route::post('/', [DoctorAppointmentController::class, 'store']);
+        Route::post('/recurring', [DoctorAppointmentController::class, 'createRecurring']);
+        
+        // Individual appointment routes (MUST come after specific routes)
+        Route::get('/{id}', [DoctorAppointmentController::class, 'show']);          // GET /api/doctor/appointments/{id}
+        Route::put('/{id}', [DoctorAppointmentController::class, 'update']);        // PUT /api/doctor/appointments/{id}
+        Route::delete('/{id}', [DoctorAppointmentController::class, 'destroy']);    // DELETE /api/doctor/appointments/{id}
+        
+        // Appointment actions
+        Route::post('/{id}/confirm', [DoctorAppointmentController::class, 'confirm']);     // POST /api/doctor/appointments/{id}/confirm
+        Route::post('/{id}/complete', [DoctorAppointmentController::class, 'complete']);   // POST /api/doctor/appointments/{id}/complete
+        Route::post('/{id}/cancel', [DoctorAppointmentController::class, 'cancel']);       // POST /api/doctor/appointments/{id}/cancel
+        Route::post('/{id}/emergency-cancel', [DoctorAppointmentController::class, 'emergencyCancel']); // POST /api/doctor/appointments/{id}/emergency-cancel
+        Route::post('/{id}/no-show', [DoctorAppointmentController::class, 'markNoShow']); // POST /api/doctor/appointments/{id}/no-show
+        Route::post('/{id}/reschedule', [DoctorAppointmentController::class, 'reschedule']); // ✅ ADD THIS
     });
 
     // Personal Info routes (Patient access)

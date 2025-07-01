@@ -147,7 +147,8 @@ class DoctorAppointmentController extends Controller
     public function confirm(Request $request, $id): JsonResponse
     {
         try {
-            $appointment = Appointment::findOrFail($id);
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
             
             $validator = Validator::make($request->all(), [
                 'confirmation_notes' => 'nullable|string|max:500'
@@ -204,7 +205,8 @@ class DoctorAppointmentController extends Controller
     public function complete(Request $request, $id): JsonResponse
     {
         try {
-            $appointment = Appointment::findOrFail($id);
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
             
             $validator = Validator::make($request->all(), [
                 'notes_by_staff' => 'nullable|string|max:1000',
@@ -263,7 +265,8 @@ class DoctorAppointmentController extends Controller
     public function cancel(Request $request, $id): JsonResponse
     {
         try {
-            $appointment = Appointment::findOrFail($id);
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
             
             $validator = Validator::make($request->all(), [
                 'reason' => 'required|string|max:500'
@@ -313,7 +316,8 @@ class DoctorAppointmentController extends Controller
     public function markNoShow(Request $request, $id): JsonResponse
     {
         try {
-            $appointment = Appointment::findOrFail($id);
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
             
             $validator = Validator::make($request->all(), [
                 'notes' => 'nullable|string|max:500'
@@ -921,6 +925,154 @@ class DoctorAppointmentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to reschedule appointment',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Show a specific appointment
+     */
+    public function show($id): JsonResponse
+    {
+        try {
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'data' => $appointment
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Appointment not found',
+                'error' => $e->getMessage()
+            ], 404);
+        }
+    }
+
+    /**
+     * Update appointment (notes, etc.)
+     */
+    public function update(Request $request, $id): JsonResponse
+    {
+        try {
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
+
+            $validator = Validator::make($request->all(), [
+                'notes' => 'nullable|string|max:1000',
+                'notes_by_staff' => 'nullable|string|max:1000',
+                'status' => 'nullable|string|in:scheduled,confirmed,completed,cancelled,no_show',
+                'reminder_preference' => 'nullable|string|in:email,sms,both,none'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $appointment->update($validator->validated());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Appointment updated successfully',
+                'data' => $appointment
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update appointment',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Delete appointment
+     */
+    public function destroy($id): JsonResponse
+    {
+        try {
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
+
+            //@Z Only allow deletion of future appointments that are not confirmed
+            // if ($appointment->scheduled_date < now() || $appointment->status === 'confirmed') {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Cannot delete past or confirmed appointments'
+            //     ], 400);
+            // }
+
+            $appointment->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Appointment deleted successfully'
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete appointment',
+                'error' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    /**
+     * Emergency cancel appointment (bypass time restrictions)
+     */
+    public function emergencyCancel(Request $request, $id): JsonResponse
+    {
+        try {
+            $appointment = Appointment::where('doctor_user_id', Auth::id())
+                ->findOrFail($id);
+            
+            $validator = Validator::make($request->all(), [
+                'reason' => 'required|string|max:500'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $result = $this->doctorAppointmentService->emergencyCancelAppointment(Auth::user(), $appointment, $request->reason);
+            
+            if ($result) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Appointment cancelled successfully (emergency override)',
+                    'data' => [
+                        'appointment' => $appointment->fresh(['patient']),
+                        'cancelled_at' => now(),
+                        'cancelled_by' => Auth::user()->name,
+                        'cancellation_reason' => $request->reason,
+                        'emergency_cancellation' => true
+                    ]
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel appointment'
+            ], 400);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel appointment',
                 'error' => $e->getMessage()
             ], 400);
         }
