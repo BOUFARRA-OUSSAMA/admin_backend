@@ -214,6 +214,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
             Route::get('/', [PersonalInfoController::class, 'getProfile']);
             Route::put('/', [PersonalInfoController::class, 'updateProfile']);
             Route::post('/image', [PersonalInfoController::class, 'updateProfileImage']);
+            Route::post('/change-password', [PersonalInfoController::class, 'changePassword']);
         });
         
         // Admin/Staff access to patient personal info
