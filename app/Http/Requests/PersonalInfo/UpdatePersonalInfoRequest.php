@@ -39,6 +39,7 @@ class UpdatePersonalInfoRequest extends FormRequest
             ],
             'name' => 'sometimes|required|string|max:255',
             'surname' => 'sometimes|required|string|max:255',
+            'phone' => 'sometimes|string|max:30', 
             'birthdate' => 'sometimes|nullable|date|before:today',
             'gender' => 'sometimes|nullable|in:male,female,other',
             'address' => 'sometimes|nullable|string|max:1000',

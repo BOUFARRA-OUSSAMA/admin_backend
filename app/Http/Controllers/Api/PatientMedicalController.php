@@ -110,8 +110,14 @@ class PatientMedicalController extends Controller
         if ($patientOrResponse instanceof JsonResponse) return $patientOrResponse;
         $patient = $patientOrResponse;
 
+
         try {
             $filters = $request->only(['test_type', 'status', 'search', 'sortBy', 'date_from', 'date_to', 'limit']);
+             // Valeurs par défaut
+        $filters['limit'] = $filters['limit'] ?? 20;
+        $filters['sortBy'] = $filters['sortBy'] ?? 'result_date';
+            
+            
             $labResults = $this->medicalDataService->getPatientLabResults($patient->id, $filters);
             return $this->success($labResults, 'Patient lab results retrieved successfully');
         } catch (\Exception $e) {

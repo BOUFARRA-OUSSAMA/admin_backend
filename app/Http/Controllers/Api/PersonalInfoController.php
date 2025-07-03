@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PersonalInfo\UpdatePersonalInfoRequest;
 use App\Http\Requests\PersonalInfo\UpdateProfileImageRequest;
+use App\Http\Requests\PersonalInfo\ChangePasswordRequest;
 use App\Models\Patient;
 use App\Services\PersonalInfoService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class PersonalInfoController extends Controller
 {
@@ -129,4 +132,45 @@ class PersonalInfoController extends Controller
             return $this->error('Failed to update patient personal information: ' . $e->getMessage(), 500);
         }
     }
+
+
+ /**
+     * Change password for authenticated patient.
+     *
+     * @param ChangePasswordRequest $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function changePassword(ChangePasswordRequest $request)
+    {
+         $user = Auth::user();
+
+    // Si $user n'est pas un modèle Eloquent, fais :
+    if (!$user instanceof \App\Models\User) {
+        $user = \App\Models\User::find(Auth::id());
+    }
+
+    if (!$user || !$user->isPatient()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Access denied. Only patients can change password.'
+        ], 403);
+    }
+
+        if (!Hash::check($request->current_password, $user->password)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Current password is incorrect.'
+        ], 422);
+    }
+
+         // Met à jour le mot de passe
+        $user->password = bcrypt($request->new_password);
+        $user->save();
+    return response()->json([
+        'success' => true,
+        'message' => 'Password changed successfully.'
+    ]);
+    }
+
+
 }

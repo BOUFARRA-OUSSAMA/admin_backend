@@ -20,6 +20,7 @@ class PersonalInfoResource extends JsonResource
             'email' => $this->patient->user->email,
             'name' => $this->name,
             'surname' => $this->surname,
+            'phone' => $this->patient->user->phone,
             'birthdate' => $this->birthdate,
             'gender' => $this->gender,
             'address' => $this->address,

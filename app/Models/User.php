@@ -152,6 +152,10 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasRole('patient');
     }
 
+
+
+ 
+
     /**
      * Check if user is doctor
      */

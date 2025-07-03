@@ -223,9 +223,36 @@ class PatientMedicalDataService
             // Charger la relation 'reviewedBy' et ne sélectionner que l'ID et le nom pour la performance.
             ->with([
                 'reviewedBy:id,name', // Charge le nom du médecin
-                'reviewedBy.doctor:user_id,specialty' // Charge la spécialité du médecin
-            ]) 
+                'reviewedBy.doctor:user_id,specialty' ,// Charge la spécialité du médecin
+                'labTest:id,test_name,test_code' // ✅ Ajouter la relation test
+                ]) 
             ->latest('result_date');
+
+
+               // ✅ Filtrage par type de test
+    if (!empty($filters['test_type'])) {
+        $query->whereHas('labTest', function($q) use ($filters) {
+            $q->where('test_name', 'LIKE', '%' . $filters['test_type'] . '%')
+              ->orWhere('test_code', 'LIKE', '%' . $filters['test_type'] . '%');
+        });
+    } 
+        // ✅ Filtrage par statut
+    if (!empty($filters['status'])) {
+        $query->where('status', $filters['status']);
+    }
+    
+    // ✅ Recherche textuelle
+    if (!empty($filters['search'])) {
+        $search = $filters['search'];
+        $query->where(function($q) use ($search) {
+            $q->where('interpretation', 'LIKE', '%' . $search . '%')
+              ->orWhere('performed_by_lab_name', 'LIKE', '%' . $search . '%')
+              ->orWhereHas('labTest', function($subQ) use ($search) {
+                  $subQ->where('test_name', 'LIKE', '%' . $search . '%')
+                       ->orWhere('test_code', 'LIKE', '%' . $search . '%');
+              });
+        });
+    }
         
         // Apply date filters
         if (!empty($filters['date_from'])) {
@@ -236,8 +263,32 @@ class PatientMedicalDataService
             $query->whereDate('result_date', '<=', $filters['date_to']);
         }
         
-        // La méthode get() est remplacée par paginate() pour gérer le 'limit'
-        return $query->paginate($filters['limit'] ?? 20);
+
+         // ✅ Tri des résultats
+    $sortBy = $filters['sortBy'] ?? 'result_date';
+    $sortDirection = 'desc'; // Par défaut, les plus récents en premier
+    
+    switch ($sortBy) {
+        case 'test_name':
+            $query->join('lab_tests', 'lab_results.lab_test_id', '=', 'lab_tests.id')
+                  ->orderBy('lab_tests.test_name', 'asc')
+                  ->select('lab_results.*'); // Éviter les conflits de colonnes
+            break;
+        case 'status':
+            $query->orderBy('status', 'asc');
+            break;
+        case 'lab_name':
+         $query->orderBy('performed_by_lab_name', 'asc');
+            break;
+        case 'result_date':
+        default:
+            $query->orderBy('result_date', $sortDirection);
+            break;
+    }
+    
+    // ✅ Pagination avec limite
+    $limit = $filters['limit'] ?? 20;
+    return $query->paginate($limit);
     }
 
 

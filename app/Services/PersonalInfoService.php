@@ -43,6 +43,7 @@ class PersonalInfoService
                 'patient_id' => $patient->id,
                 'name' => explode(' ', $user->name)[0] ?? '',
                 'surname' => explode(' ', $user->name)[1] ?? '',
+                'phone' => explode(' ', $user->phone)[2] ?? '',
             ]);
         }
 
@@ -69,6 +70,12 @@ class PersonalInfoService
         if (isset($data['email'])) {
             $user->update(['email' => $data['email']]);
             unset($data['email']); // Remove from personal info data
+        }
+
+        // ✅ Update user phone if provided
+        if (isset($data['phone'])) {
+            $user->update(['phone' => $data['phone']]);
+            unset($data['phone']); // Remove from personal info data
         }
 
         $personalInfo = $this->personalInfoRepository->updateOrCreateByPatientId($patient->id, $data);
@@ -150,7 +157,11 @@ class PersonalInfoService
             $patient->user->update(['email' => $data['email']]);
             unset($data['email']); // Remove from personal info data
         }
-
+       // ✅ Update user phone if provided
+        if (isset($data['phone'])) {
+            $patient->user->update(['phone' => $data['phone']]);
+            unset($data['phone']); // Remove from personal info data
+        }
         $personalInfo = $this->personalInfoRepository->updateOrCreateByPatientId($patient->id, $data);
 
         return new PersonalInfoResource($personalInfo->load(['patient.user']));
