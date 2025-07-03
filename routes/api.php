@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\PatientAppointmentController;
 use App\Http\Controllers\Api\DoctorAppointmentController;
 use App\Http\Controllers\Api\DoctorPatientController;
+use App\Http\Controllers\Api\DoctorProfileController;
 use App\Http\Controllers\Api\PersonalInfoController;
 use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\AppointmentReminderController;
@@ -365,7 +366,18 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::get('/demographics/age', [App\Http\Controllers\Api\DoctorPatientController::class, 'getAgeDemographics']);           // GET /api/doctor/patients/demographics/age
         Route::get('/demographics/overview', [App\Http\Controllers\Api\DoctorPatientController::class, 'getDemographicsOverview']); // GET /api/doctor/patients/demographics/overview
     });
+
+    // Doctor Profile Management Routes
+    Route::prefix('doctor/profile')->group(function () {
+        Route::get('/test', [DoctorProfileController::class, 'test']);                       // GET /api/doctor/profile/test
+        Route::get('/', [DoctorProfileController::class, 'getProfile']);                    // GET /api/doctor/profile
+        Route::put('/', [DoctorProfileController::class, 'updateProfile']);                 // PUT /api/doctor/profile
+        Route::post('/image', [DoctorProfileController::class, 'updateProfileImage']);      // POST /api/doctor/profile/image
+    });
 });
+
+// Public route for specialties (no auth required)
+Route::get('/specialties', [DoctorProfileController::class, 'getSpecialties']);
 
 // REMINDER MANAGEMENT ROUTES
 Route::group(['middleware' => ['jwt.auth']], function () {

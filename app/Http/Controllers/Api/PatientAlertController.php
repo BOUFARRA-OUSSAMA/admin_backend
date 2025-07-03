@@ -101,6 +101,11 @@ class PatientAlertController extends Controller
 
             $alerts->setCollection($transformedAlerts);
 
+            // ✅ ADD DEBUG INFO to track what we're returning
+            $totalAlerts = $transformedAlerts->count();
+            $activeCount = $transformedAlerts->where('isActive', true)->count();
+            $inactiveCount = $transformedAlerts->where('isActive', false)->count();
+
             return response()->json([
                 'success' => true,
                 'data' => $alerts->items(),
@@ -109,6 +114,14 @@ class PatientAlertController extends Controller
                     'last_page' => $alerts->lastPage(),
                     'per_page' => $alerts->perPage(),
                     'total' => $alerts->total(),
+                ],
+                'debug_info' => [ // ✅ Add debug info
+                    'total_alerts' => $totalAlerts,
+                    'active_count' => $activeCount,
+                    'inactive_count' => $inactiveCount,
+                    'filters_applied' => $request->only(['patient_id', 'alert_type', 'severity', 'is_active']),
+                    'has_is_active_filter' => $request->has('is_active'),
+                    'is_active_value' => $request->get('is_active')
                 ],
                 'message' => 'Patient alerts retrieved successfully'
             ]);

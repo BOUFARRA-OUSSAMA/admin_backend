@@ -47,6 +47,9 @@ class DatabaseSeeder extends Seeder
             AiModelSeeder::class,
             ActivityLogSeeder::class,
             BillSeeder::class,  // Now runs AFTER PatientSeeder
+
+            // Test data for patient@example.com and doctor@example.com
+            TestPatientDoctorSeeder::class,
         ]);
     }
 }
