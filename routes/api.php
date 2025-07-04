@@ -150,6 +150,8 @@ Route::group(['middleware' => ['jwt.auth']], function () {
         Route::put('bills/{bill}/items/{item}', [BillController::class, 'updateItem']);
         Route::delete('bills/{bill}/items/{item}', [BillController::class, 'removeItem']);
         Route::get('bills/{bill}/pdf', [BillController::class, 'downloadPdf'])->name('bills.pdf.download');
+        Route::get('bills/{bill}/admin-pdf', [BillController::class, 'downloadAdminBillPdf'])
+            ->name('bills.admin.pdf.download');
     });
 
     // Bill routes for patients (read-only) - REMOVE extra middleware group
@@ -452,4 +454,3 @@ Route::fallback(function () {
 
 
 
- 

@@ -503,9 +503,34 @@ class BillService
         
         // Stream the PDF to the browser for download
         return $pdf->download('receipt-' . $bill->bill_number . '.pdf');
-    } 
- 
+    }
 
+    /**
+     * Generate and stream a PDF receipt for admin bill viewing.
+     * This is a separate method from patient receipts to avoid any side effects.
+     *
+     * @param Bill $bill
+     * @return \Illuminate\Http\Response
+     */
+    public function generateAdminBillPdf(Bill $bill)
+    {
+        // Ensure all necessary relationships are loaded for the PDF view
+        $bill->loadMissing(['patient.user', 'doctor.doctor', 'items']);
+
+        // Prepare data for the view
+        $data = [
+            'bill' => $bill,
+            'patientName' => $bill->patient && $bill->patient->user ? $bill->patient->user->name : 'N/A',
+            'doctorName' => $bill->doctor ? $bill->doctor->name : 'N/A',
+            'doctorSpecialty' => $bill->doctor && $bill->doctor->doctor ? $bill->doctor->doctor->specialty : 'N/A',
+        ];
+        
+        // Generate PDF content using the patient receipt template
+        $pdf = Pdf::loadView('pdfs.patient_receipt', $data);
+        
+        // Stream the PDF to the browser for download
+        return $pdf->download('admin-bill-' . $bill->bill_number . '.pdf');
+    }
 
 
 }
