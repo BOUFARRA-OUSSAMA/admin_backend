@@ -356,9 +356,28 @@ class BillController extends Controller
         }
     }
 
-
-
-
-
-
+    /**
+     * Download admin version of bill PDF.
+     * This method provides an alternate way to download bills specifically for admin users.
+     *
+     * @param Bill $bill
+     * @return \Illuminate\Http\Response|\Illuminate\Http\JsonResponse
+     */
+    public function downloadAdminBillPdf(Bill $bill)
+    {
+        try {
+            // No ownership verification needed - permission middleware handles authorization
+            
+            // Delegate PDF generation and download to the service
+            return $this->billService->generateAdminBillPdf($bill);
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to download admin bill PDF: ' . $e->getMessage(), [
+                'bill_id' => $bill->id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->error('Failed to download bill PDF: ' . $e->getMessage(), 500);
+        }
+    }
 }
