@@ -78,6 +78,29 @@ class PersonalInfoService
             unset($data['phone']); // Remove from personal info data
         }
 
+// ✅ NOUVEAU: Synchroniser le name complet dans User
+    if (isset($data['name']) || isset($data['surname'])) {
+        // Récupérer les valeurs actuelles de PersonalInfo
+        $currentPersonalInfo = $this->personalInfoRepository->getByPatientId($patient->id);
+        
+        $currentName = $currentPersonalInfo->name ?? '';
+        $currentSurname = $currentPersonalInfo->surname ?? '';
+        
+        // Utiliser les nouvelles valeurs ou garder les actuelles
+        $newName = $data['name'] ?? $currentName;
+        $newSurname = $data['surname'] ?? $currentSurname;
+        
+        // Construire le nom complet
+        $fullName = trim($newName . ' ' . $newSurname);
+         // Mettre à jour le User avec le nom complet
+        if (!empty($fullName)) {
+            $user->update(['name' => $fullName]);
+        }
+    }
+
+
+
+
         $personalInfo = $this->personalInfoRepository->updateOrCreateByPatientId($patient->id, $data);
 
         return new PersonalInfoResource($personalInfo->load(['patient.user']));
@@ -162,6 +185,30 @@ class PersonalInfoService
             $patient->user->update(['phone' => $data['phone']]);
             unset($data['phone']); // Remove from personal info data
         }
+
+// ✅ NOUVEAU: Synchroniser le name complet dans User
+    if (isset($data['name']) || isset($data['surname'])) {
+        // Récupérer les valeurs actuelles de PersonalInfo
+        $currentPersonalInfo = $this->personalInfoRepository->getByPatientId($patient->id);
+        
+        $currentName = $currentPersonalInfo->name ?? '';
+        $currentSurname = $currentPersonalInfo->surname ?? '';
+        
+        // Utiliser les nouvelles valeurs ou garder les actuelles
+        $newName = $data['name'] ?? $currentName;
+        $newSurname = $data['surname'] ?? $currentSurname;
+        
+        // Construire le nom complet
+        $fullName = trim($newName . ' ' . $newSurname);
+          // Mettre à jour le User avec le nom complet
+        if (!empty($fullName)) {
+            $patient->user->update(['name' => $fullName]);
+        }
+    }
+
+
+
+
         $personalInfo = $this->personalInfoRepository->updateOrCreateByPatientId($patient->id, $data);
 
         return new PersonalInfoResource($personalInfo->load(['patient.user']));

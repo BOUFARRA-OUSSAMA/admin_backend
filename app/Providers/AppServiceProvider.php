@@ -16,7 +16,8 @@ use App\Observers\AppointmentObserver;
 use Illuminate\Database\Connectors\PostgresConnector;
 use Illuminate\Support\Facades\Log;
 use PDO;
-
+use App\Models\PersonalInfo;
+use App\Observers\PersonalInfoObserver;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -135,5 +136,8 @@ class AppServiceProvider extends ServiceProvider
                 }
             };
         });
+
+        PersonalInfo::observe(PersonalInfoObserver::class);
     }
+     
 }
