@@ -108,6 +108,7 @@ Route::group(['middleware' => ['jwt.auth']], function () {
     Route::get('activity-logs/actions', [ActivityLogController::class, 'getActions']);
     Route::get('activity-logs/modules', [ActivityLogController::class, 'getModules']);
 
+
     // Analytics Routes (with permission middleware)
     Route::group(['middleware' => 'permission:analytics:view'], function () {
         // Existing routes

@@ -136,7 +136,11 @@ class PatientSeeder extends Seeder
                 'created_at' => $registrationDate,
                 'updated_at' => $registrationDate,
             ]);
-            
+            // ✅ AJOUTER CETTE LIGNE: Synchroniser le nom dans User (même si déjà fait lors de la création)
+            // Ceci assure la cohérence pour les données futures quand name/surname changent
+            $user->update(['name' => $firstName . ' ' . $lastName]);
+
+
             $progressBar->advance();
         }
         
