@@ -3,11 +3,19 @@
 namespace App\Services;
 
 use App\Models\Role;
+use App\Models\Permission;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class RoleService
 {
+    protected $interfacePermissionService;
+
+    public function __construct(InterfacePermissionService $interfacePermissionService)
+    {
+        $this->interfacePermissionService = $interfacePermissionService;
+    }
+
     /**
      * Get all roles with pagination
      * 
@@ -49,6 +57,7 @@ class RoleService
      * 
      * @param array $data
      * @return Role
+     * @throws \Exception If interface permission validation fails
      */
     public function createRole(array $data): Role
     {
@@ -60,6 +69,7 @@ class RoleService
 
         // Attach permissions if provided
         if (isset($data['permissions'])) {
+            $this->validateInterfacePermissions($data['permissions']);
             $role->permissions()->attach($data['permissions']);
         }
 
@@ -72,6 +82,7 @@ class RoleService
      * @param int $id
      * @param array $data
      * @return Role
+     * @throws \Exception If interface permission validation fails
      */
     public function updateRole(int $id, array $data): Role
     {
@@ -91,8 +102,9 @@ class RoleService
 
         $role->save();
 
-        // ✅ ALLOW: Permission sync for all roles (including protected ones)
+        // Validate interface permissions before syncing
         if (isset($data['permissions'])) {
+            $this->validateInterfacePermissions($data['permissions']);
             $role->permissions()->sync($data['permissions']);
         }
 
@@ -109,9 +121,6 @@ class RoleService
     {
         $role = $this->getRoleById($id);
         
-        // ✅ REMOVED: No more protection against deletion
-        // Previous code had protection for admin, patient, doctor, etc.
-        
         // Detach all permissions and users before deletion
         $role->permissions()->detach();
         $role->users()->detach();
@@ -125,14 +134,48 @@ class RoleService
      * @param int $roleId
      * @param array $permissionIds
      * @return Role
+     * @throws \Exception If interface permission validation fails
      */
     public function assignPermissions(int $roleId, array $permissionIds): Role
     {
         $role = $this->getRoleById($roleId);
         
-        // ✅ REMOVED: Protection check - allow permission assignment for all roles
+        // Validate interface permissions before syncing
+        $this->validateInterfacePermissions($permissionIds);
         $role->permissions()->sync($permissionIds);
 
         return $role->load('permissions');
+    }
+
+    /**
+     * Validate that permission IDs contain exactly one interface permission
+     * 
+     * @param array $permissionIds
+     * @return bool
+     * @throws \Exception If validation fails
+     */
+    protected function validateInterfacePermissions(array $permissionIds): bool
+    {
+        $interfacePermissions = Permission::whereIn('id', $permissionIds)
+            ->where('group', 'interfaces')
+            ->get();
+            
+        if ($interfacePermissions->count() > 1) {
+            throw new \Exception("A role can only have one interface permission. Multiple interface permissions selected.");
+        }
+        
+        return true;
+    }
+
+    /**
+     * Get the interface permission for a role
+     * 
+     * @param int $roleId
+     * @return Permission|null
+     */
+    public function getRoleInterfacePermission(int $roleId): ?Permission
+    {
+        $role = $this->getRoleById($roleId);
+        return $role->getInterfacePermission();
     }
 }

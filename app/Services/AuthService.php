@@ -11,6 +11,7 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use Illuminate\Support\Facades\Auth;
 
 class AuthService
 {
@@ -19,14 +20,17 @@ class AuthService
      */
     protected $userRepository;
 
+    protected $interfacePermissionService;
+
     /**
      * AuthService constructor.
      * 
      * @param UserRepositoryInterface $userRepository
      */
-    public function __construct(UserRepositoryInterface $userRepository)
+    public function __construct(UserRepositoryInterface $userRepository, InterfacePermissionService $interfacePermissionService)
     {
         $this->userRepository = $userRepository;
+        $this->interfacePermissionService = $interfacePermissionService;
     }
 
     /**
@@ -153,5 +157,79 @@ class AuthService
             'expires_in' => config('jwt.ttl') * 60,
             'user' => $user
         ];
+    }
+
+    /**
+     * Generate JWT token with enhanced permission data.
+     *
+     * @param  \App\Models\User  $user
+     * @return array
+     */
+    public function generateToken(User $user)
+    {
+        // Get all user permissions through roles
+        $permissions = collect();
+        $permissionsByModule = [];
+        
+        foreach ($user->roles as $role) {
+            $permissions = $permissions->merge($role->permissions);
+        }
+        
+        // Create a flat array of permission codes
+        $permissionCodes = $permissions->pluck('code')->unique()->values()->toArray();
+        
+        // Group permissions by module for efficient checking
+        foreach ($permissions as $permission) {
+            $parts = explode(':', $permission->code);
+            $module = $parts[0];
+            
+            if (!isset($permissionsByModule[$module])) {
+                $permissionsByModule[$module] = [];
+            }
+            
+            $permissionsByModule[$module][] = $permission->code;
+        }
+        
+        // Get interface permission
+        $interfacePermission = $this->interfacePermissionService->getUserInterfacePermission($user);
+        $interfaceName = $interfacePermission ? $interfacePermission->getInterfaceName() : null;
+        
+        // Create token with custom claims
+        $token = Auth::claims([
+            'permissions' => $permissionCodes,
+            'permission_map' => $permissionsByModule,
+            'interface' => $interfaceName,
+        ])->login($user);
+        
+        return [
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => Auth::factory()->getTTL() * 60,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->roles,
+                'permissions' => $permissionCodes,
+                'interface' => $interfaceName,
+            ]
+        ];
+    }
+
+    /**
+     * Attempt to authenticate a user and generate token.
+     *
+     * @param  string  $email
+     * @param  string  $password
+     * @return array|bool
+     */
+    public function attempt($email, $password)
+    {
+        if ($token = Auth::attempt(['email' => $email, 'password' => $password])) {
+            $user = Auth::user();
+            return $this->generateToken($user);
+        }
+        
+        return false;
     }
 }
