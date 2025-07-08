@@ -319,8 +319,9 @@ Route::group(['middleware' => ['jwt.auth']], function () {
 
               
         // Patient Files Management
-         Route::get('patient-files/categories', [App\Http\Controllers\Api\PatientFileController::class, 'categories']);
-          Route::get('patient-files/{file}/download', [App\Http\Controllers\Api\PatientFileController::class, 'download'])->name('patient-files.download');
+        Route::post('patient/files', [App\Http\Controllers\Api\PatientFileController::class, 'uploadForPatient']); // ✅ NOUVELLE ROUTE
+        Route::get('patient-files/categories', [App\Http\Controllers\Api\PatientFileController::class, 'categories']);
+        Route::get('patient-files/{file}/download', [App\Http\Controllers\Api\PatientFileController::class, 'download'])->name('patient-files.download');
         Route::apiResource('patient-files', App\Http\Controllers\Api\PatientFileController::class);
       
 
