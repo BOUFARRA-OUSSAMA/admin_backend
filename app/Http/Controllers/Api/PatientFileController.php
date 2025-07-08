@@ -100,8 +100,8 @@ class PatientFileController extends Controller
             $validator = Validator::make($request->all(), [
                 'patient_id' => 'required|exists:patients,id',
                 'file' => 'required|file|max:25600', // 25MB max
-                'category' => 'required|in:xray,scan,lab_report,insurance,other',
-                'description' => 'required|string|max:1000'
+                'category' => 'required|in:xray,scan,lab_report,insurance,other,prescription,document',
+                'description' => 'nullable|string|max:1000'
             ]);
 
             if ($validator->fails()) {
@@ -169,6 +169,71 @@ class PatientFileController extends Controller
             return $this->error('Failed to upload file: ' . $e->getMessage(), 500);
         }
     }
+
+
+        /**
+     * Store a new file for the currently authenticated patient.
+     * ✅ NOUVELLE MÉTHODE
+     */
+    public function uploadForPatient(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'file' => 'required|file|max:25600', // 25MB max
+                'category' => 'required|in:xray,scan,lab_report,insurance,other,prescription,document',
+                'description' => 'nullable|string|max:1000'
+            ]);
+             if ($validator->fails()) {
+                return $this->error('Validation failed', 422, $validator->errors());
+            }
+
+            $user = Auth::user();
+
+            // Ensure the user is a patient and has a patient record
+            if (!$user->isPatient() || !$user->patient) {
+                return $this->error('You must be a patient to upload files to your record.', 403);
+            }
+            
+            $patient = $user->patient;
+             // Upload file using service
+            $uploadResult = $this->fileUploadService->uploadPatientFile(
+                $request->file('file'),
+                $patient->id,
+                $request->category,
+                $user->id
+            );
+             // Create file record
+            $patientFile = PatientFile::create([
+                'patient_id' => $patient->id,
+                'original_filename' => $uploadResult['original_name'],
+                'stored_filename' => basename($uploadResult['file_path']),
+                'file_path' => $uploadResult['file_path'],
+                'file_size' => $uploadResult['file_size'],
+                'mime_type' => $uploadResult['mime_type'],
+                'file_type' => $uploadResult['file_type'],
+                'category' => $request->category,
+                'description' => $request->description,
+                'is_visible_to_patient' => true, // Files uploaded by patient are always visible to them
+                'uploaded_by_user_id' => $user->id,
+                'uploaded_at' => now()
+            ]);
+             // Create timeline event
+            $this->timelineEventService->createFileUploadEvent($patientFile, $user);
+
+            // Send notification to doctors
+            $this->fileUploadService->notifyDoctorsOfNewFile($patientFile);
+
+            return $this->success(
+                $patientFile->toFrontendFormat(),
+                'File uploaded successfully',
+                201
+            );
+             } catch (\Exception $e) {
+            return $this->error('Failed to upload file: ' . $e->getMessage(), 500);
+        }
+    }
+
+    
 
     /**
      * Display the specified file metadata.
