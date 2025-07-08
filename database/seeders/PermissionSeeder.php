@@ -46,6 +46,14 @@ class PermissionSeeder extends Seeder
                 ['name' => 'View Role Hierarchy', 'code' => 'roles:view-hierarchy'],
             ],
 
+            // Add new Interface Access permissions
+            'interfaces' => [
+                ['name' => 'Admin Interface Access', 'code' => 'interfaces:admin_access'],
+                ['name' => 'Doctor Interface Access', 'code' => 'interfaces:doctor_access'],
+                ['name' => 'Receptionist Interface Access', 'code' => 'interfaces:receptionist_access'],
+                ['name' => 'Patient Interface Access', 'code' => 'interfaces:patient_access'],
+            ],
+
             // Permission Management
             'permissions' => [
                 ['name' => 'View Permissions', 'code' => 'permissions:view'],
@@ -208,13 +216,20 @@ class PermissionSeeder extends Seeder
     {
         $this->command->info('Assigning permissions to roles...');
 
-        // ✅ ADMIN GETS ALL PERMISSIONS - This ensures admin always has everything
+        // ✅ ADMIN GETS ALL PERMISSIONS EXCEPT INTERFACE PERMISSIONS
         $adminRole = Role::where('code', 'admin')->first();
         if ($adminRole) {
-            // Get ALL permissions from database (including ones created by other seeders)
-            $allPermissionIds = Permission::pluck('id')->toArray();
-            $adminRole->permissions()->sync($allPermissionIds);
-            $this->command->info("✅ Admin role assigned " . count($allPermissionIds) . " permissions");
+            // Get non-interface permissions
+            $nonInterfacePermissions = Permission::where('group', '!=', 'interfaces')->pluck('id')->toArray();
+            
+            // Get only admin interface permission
+            $adminInterfacePermission = Permission::where('code', 'interfaces:admin_access')->first();
+            
+            // Combine permissions ensuring admin has only one interface permission
+            $adminPermissions = array_merge($nonInterfacePermissions, [$adminInterfacePermission->id]);
+            
+            $adminRole->permissions()->sync($adminPermissions);
+            $this->command->info("✅ Admin role assigned " . count($adminPermissions) . " permissions with single interface");
         }
 
         // Assign specific permissions to doctor role
@@ -244,17 +259,19 @@ class PermissionSeeder extends Seeder
                 'appointments:block-slots',
                 'reminders:view',
                 'reminders:schedule',
-                'reminders:send-manual'
+                'reminders:send-manual',
+                'interfaces:doctor_access'
             ])->pluck('id')->toArray();
 
             $doctorRole->permissions()->sync($doctorPermissions);
             $this->command->info("✅ Doctor role assigned " . count($doctorPermissions) . " permissions");
         }
 
-        // Assign limited permissions to nurse role
+        // Update nurse role permissions
         $nurseRole = Role::where('code', 'nurse')->first();
         if ($nurseRole) {
             $nursePermissions = Permission::whereIn('code', [
+                'interfaces:receptionist_access',
                 'patients:view',
                 'patients:view-medical',
                 'ai:use',
@@ -271,10 +288,11 @@ class PermissionSeeder extends Seeder
             $this->command->info("✅ Nurse role assigned " . count($nursePermissions) . " permissions");
         }
 
-        // Assign limited permissions to receptionist role
+        // Update receptionist role permissions
         $receptionistRole = Role::where('code', 'receptionist')->first();
         if ($receptionistRole) {
             $receptionistPermissions = Permission::whereIn('code', [
+                'interfaces:receptionist_access',
                 'patients:view',
                 'patients:create',
                 'patients:edit',
@@ -303,10 +321,11 @@ class PermissionSeeder extends Seeder
             $this->command->info("✅ Receptionist role assigned " . count($receptionistPermissions) . " permissions");
         }
 
-        // Assign permissions to patient role for their own data
+        // Update patient role permissions
         $patientRole = Role::where('code', 'patient')->first();
         if ($patientRole) {
             $patientPermissions = Permission::whereIn('code', [
+                'interfaces:patient_access',
                 'patients:view-files',
                 'patients:manage-files',
                 'patients:view-notes',

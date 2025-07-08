@@ -128,7 +128,52 @@ class AuthController extends Controller
                 $request->ip()
             );
 
-            return $this->respondWithToken($token);
+            // Get all user permissions and format them for the response
+            $user->load('roles.permissions');
+            $permissions = collect();
+            $permissionsByModule = [];
+            
+            foreach ($user->roles as $role) {
+                $permissions = $permissions->merge($role->permissions);
+            }
+            
+            // Create a flat array of permission codes
+            $permissionCodes = $permissions->pluck('code')->unique()->values()->toArray();
+            
+            // Group permissions by module
+            foreach ($permissions as $permission) {
+                $parts = explode(':', $permission->code);
+                $module = $parts[0];
+                
+                if (!isset($permissionsByModule[$module])) {
+                    $permissionsByModule[$module] = [];
+                }
+                
+                $permissionsByModule[$module][] = $permission->code;
+            }
+            
+            // Get interface permission
+            $interfacePermission = $user->getInterfacePermission();
+            $interfaceName = $interfacePermission ? $interfacePermission->getInterfaceName() : null;
+
+            // Create token with custom claims
+            JWTAuth::factory()->setTTL(config('jwt.ttl'));
+            $token = JWTAuth::customClaims([
+                'permissions' => $permissionCodes,
+                'permission_map' => $permissionsByModule,
+                'interface' => $interfaceName,
+            ])->fromUser($user);
+
+            return response()->json([
+                'success' => true,
+                'access_token' => $token,
+                'token_type' => 'bearer',
+                'expires_in' => config('jwt.ttl') * 120,
+                'user' => array_merge($user->toArray(), [
+                    'permissions' => $permissionCodes,
+                    'interface' => $interfaceName
+                ])
+            ]);
         } catch (JWTException $e) {
             // Log the exception
             $this->authService->logActivity(
@@ -349,27 +394,6 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Mot de passe modifié avec succès.'
-        ]);
-    }
-
-    /**
-     * Get the token array structure.
-     *
-     * @param  string $token
-     * @return \Illuminate\Http\JsonResponse
-     */
-    protected function respondWithToken($token)
-    {
-        // Get the user directly from JWTAuth
-        $user = JWTAuth::user();
-        $user->load('roles.permissions');
-
-        return response()->json([
-            'success' => true,
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => config('jwt.ttl') * 60,
-            'user' => $user
         ]);
     }
 }

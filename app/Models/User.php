@@ -112,37 +112,56 @@ class User extends Authenticatable implements JWTSubject
         return $role->intersect($this->roles->pluck('code'))->count() > 0;
     }
 
-  
     /**
-     * Get all permissions for the user
+     * Get all permissions for the user through their roles.
+     *
+     * @return \Illuminate\Support\Collection
      */
     public function getAllPermissions()
     {
-        $permissions = [];
+        $permissions = collect();
+        
         foreach ($this->roles as $role) {
-            foreach ($role->permissions as $permission) {
-                $permissions[] = $permission;
-            }
+            $permissions = $permissions->merge($role->permissions);
         }
-
-        return collect($permissions)->unique('id');
+        
+        return $permissions->unique('id');
     }
 
     /**
-     * Check if user has specific permission
+     * Check if user has a specific permission.
+     *
+     * @param string $permissionCode
+     * @return bool
      */
-    public function hasPermission($permission): bool
+    public function hasPermission($permissionCode)
     {
-        if (is_string($permission)) {
-            return $this->getAllPermissions()->where('code', $permission)->count() > 0;
-        }
+        return $this->getAllPermissions()->contains('code', $permissionCode);
+    }
 
-        // Convert array to collection if needed
-        if (is_array($permission)) {
-            $permission = collect($permission);
-        }
+    /**
+     * Get the user's interface permission.
+     *
+     * @return \App\Models\Permission|null
+     */
+    public function getInterfacePermission()
+    {
+        $interfacePermissions = $this->getAllPermissions()->filter(function ($permission) {
+            return $permission->isInterfacePermission();
+        });
+        
+        return $interfacePermissions->first();
+    }
 
-        return $permission->intersect($this->getAllPermissions()->pluck('code'))->count() > 0;
+    /**
+     * Get the interface name for this user.
+     *
+     * @return string|null
+     */
+    public function getInterfaceName()
+    {
+        $permission = $this->getInterfacePermission();
+        return $permission ? $permission->getInterfaceName() : null;
     }
 
     /**
