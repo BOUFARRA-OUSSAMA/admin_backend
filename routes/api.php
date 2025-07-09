@@ -456,3 +456,16 @@ Route::fallback(function () {
 
 
 
+// Ajoutez ces routes dans la section des routes protégées
+
+// RECEPTIONIST PATIENT MANAGEMENT ROUTES
+Route::prefix('receptionist/patients')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\ReceptionistPatientController::class, 'index'])
+        ->middleware('permission:patients:view');
+    Route::post('/', [App\Http\Controllers\Api\ReceptionistPatientController::class, 'store'])
+        ->middleware('permission:patients:create');
+    Route::put('/{patient}', [App\Http\Controllers\Api\ReceptionistPatientController::class, 'update'])
+        ->middleware('permission:patients:edit');
+    Route::delete('/{patient}', [App\Http\Controllers\Api\ReceptionistPatientController::class, 'destroy'])
+        ->middleware('permission:patients:delete');
+});

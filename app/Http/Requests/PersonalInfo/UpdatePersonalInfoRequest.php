@@ -44,7 +44,7 @@ class UpdatePersonalInfoRequest extends FormRequest
             'gender' => 'sometimes|nullable|in:male,female,other',
             'address' => 'sometimes|nullable|string|max:1000',
             'emergency_contact' => 'sometimes|nullable|string|max:500',
-            'marital_status' => 'sometimes|nullable|in:single,married,divorced,widowed',
+            'marital_status' => 'sometimes|nullable|in:single,married,divorced,widowed,other',
             'blood_type' => 'sometimes|nullable|in:A+,A-,B+,B-,AB+,AB-,O+,O-',
             'nationality' => 'sometimes|nullable|string|max:100',
         ];
